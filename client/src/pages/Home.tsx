@@ -17,6 +17,9 @@ interface Chat {
         content: string;
     };
     unreadCount?: number;
+    vibes?: string[];
+    isBlockedByMe?: boolean;
+    isBlockedByOther?: boolean;
 }
 
 interface Connection {

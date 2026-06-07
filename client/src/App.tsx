@@ -17,6 +17,7 @@ import { useEffect } from 'react'
 
 import SearchPage from './pages/SearchPage'
 import Layout from './components/Layout'
+import ProfilePage from './pages/ProfilePage'
 
 function App() {
   const dispatch = useDispatch();
@@ -50,6 +51,7 @@ function App() {
           <Route element={<Layout />}>
             <Route path="/" element={< Home/>} />
             <Route path="/search" element={<SearchPage />} />
+            <Route path="/profile" element={<ProfilePage />} />
           </Route>
         </Route>
 

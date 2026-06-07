@@ -1,5 +1,8 @@
+import UserStats from "../../db/models/userStatsSchema.js"; // Import at top
+
 import ChatMember from "../../db/models/ChatMember.js";
 import Message from "../../db/models/Messages.js";
+import User from "../../db/models/User.js";
 
 export const getChatsByUser = async (req, res) => {
   try {
@@ -35,14 +38,28 @@ export const getChatsByUser = async (req, res) => {
         const chat = cm.chat;
 
         let otherUser = null;
+        let isBlockedByMe = false;
+        let isBlockedByOther = false;
 
         if (chat.type === "private") {
           const members = await ChatMember.find({ chat: chat._id })
-            .populate("user", "name username profilePicture");
+            .populate("user", "name username profilePicture blockedUsers");
 
           otherUser = members.find(
             (m) => m.user._id.toString() !== userId.toString()
           )?.user;
+
+          if (otherUser) {
+            const currentUser = await User.findById(userId).select("blockedUsers");
+            
+            isBlockedByMe = currentUser.blockedUsers.some(
+              id => id.toString() === otherUser._id.toString()
+            );
+            
+            isBlockedByOther = otherUser.blockedUsers.some(
+              id => id.toString() === userId.toString()
+            );
+          }
         }
 
         // ---- UNREAD COUNT LOGIC ----
@@ -63,6 +80,14 @@ export const getChatsByUser = async (req, res) => {
         }
         // ----------------------------
 
+        let vibes = [];
+        if (otherUser) {
+           const stats = await UserStats.findOne({ userId: otherUser._id });
+           if (stats) {
+             vibes = stats.vibe || [];
+           }
+        }
+
         return {
           chatId: chat._id,
           type: chat.type,
@@ -75,6 +100,9 @@ export const getChatsByUser = async (req, res) => {
           lastMessage: chat.lastMessage,
           lastMessageAt: chat.lastMessageAt,
           unreadCount,
+          vibes,
+          isBlockedByMe,
+          isBlockedByOther
         };
       })
     );

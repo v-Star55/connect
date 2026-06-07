@@ -1,29 +1,65 @@
 import Message from "../../db/models/Messages.js";
 import Chat from "../../db/models/Chat.js";
+import ChatMember from "../../db/models/ChatMember.js";
+import User from "../../db/models/User.js";
 
 export const sendMessage = async (req, res) => {
   const { chatId, content } = req.body;
   const userId = req.user.id;
 
-  const msg = await Message.create({
-    content,
-    sender: userId,
-    chatId,
-  });
+  try {
+    // Check if blocked
+    const chat = await Chat.findById(chatId);
+    if (!chat) return res.status(404).json({ message: "Chat not found" });
 
-  const populatedMsg = await Message.findById(msg._id).populate("sender", "name profilePicture");
+    if (chat.type === "private") {
+      // Find the other user
+      const members = await ChatMember.find({ chat: chatId });
+      const otherMember = members.find(m => m.user.toString() !== userId.toString());
+      
+      if (otherMember) {
+        const otherUserId = otherMember.user;
+        
+        const [currentUser, targetUser] = await Promise.all([
+          User.findById(userId).select("blockedUsers"),
+          User.findById(otherUserId).select("blockedUsers")
+        ]);
 
-  await Chat.findByIdAndUpdate(chatId, {
-    lastMessage: msg._id,
-    lastMessageAt: msg.createdAt,
-  });
+        const isBlockedByMe = currentUser.blockedUsers.some(id => id.toString() === otherUserId.toString());
+        if (isBlockedByMe) {
+          return res.status(403).json({ message: "You have blocked this user" });
+        }
 
-  res.status(201).json({ 
-    message: {
-      ...populatedMsg.toObject(),
-      chatId: chatId 
-    } 
-  });
+        const isBlockedByOther = targetUser.blockedUsers.some(id => id.toString() === userId.toString());
+        if (isBlockedByOther) {
+          return res.status(403).json({ message: "This user has blocked you" });
+        }
+      }
+    }
+
+    const msg = await Message.create({
+      content,
+      sender: userId,
+      chatId,
+    });
+
+    const populatedMsg = await Message.findById(msg._id).populate("sender", "name profilePicture");
+
+    await Chat.findByIdAndUpdate(chatId, {
+      lastMessage: msg._id,
+      lastMessageAt: msg.createdAt,
+    });
+
+    res.status(201).json({ 
+      message: {
+        ...populatedMsg.toObject(),
+        chatId: chatId 
+      } 
+    });
+  } catch (error) {
+    console.error("Send message error:", error);
+    res.status(500).json({ message: "Server error" });
+  }
 };
 
 export default sendMessage;

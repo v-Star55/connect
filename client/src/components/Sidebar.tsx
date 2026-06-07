@@ -1,6 +1,7 @@
 import { useState, useRef, useEffect } from "react";
 import { Link, useNavigate, useLocation } from "react-router-dom";
 import { useSelector, useDispatch } from "react-redux";
+import { useQueryClient } from "@tanstack/react-query";
 import { logout } from "../slice/auth/authSlice";
 import { logoutApi } from "../api/api";
 import { 
@@ -21,6 +22,7 @@ const Sidebar = () => {
     const navigate = useNavigate();
     const location = useLocation();
     
+    const queryClient = useQueryClient();
     const [isProfileMenuOpen, setIsProfileMenuOpen] = useState(false);
     const [isRequestsModalOpen, setIsRequestsModalOpen] = useState(false);
     const profileMenuRef = useRef<HTMLDivElement>(null);
@@ -28,12 +30,13 @@ const Sidebar = () => {
     const handleLogout = async () => {
         try {
             await logoutApi();
-            dispatch(logout());
-            navigate("/login");
             toast.success("Logged out successfully");
         } catch (error) {
             console.log("Logout error:", error);
-            toast.error("Failed to logout");
+        } finally {
+            dispatch(logout());
+            queryClient.removeQueries();
+            navigate("/login");
         }
     };
 
@@ -125,7 +128,7 @@ const Sidebar = () => {
                         </div>
                         <div className="p-2">
                             <Link 
-                                to={`/profile/${user?.username}`} 
+                                to="/profile" 
                                 className="flex items-center gap-3 px-3 py-2 text-sm text-gray-300 hover:text-white hover:bg-white/5 rounded-xl transition-colors"
                                 onClick={() => setIsProfileMenuOpen(false)}
                             >

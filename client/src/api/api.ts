@@ -26,7 +26,6 @@ api.interceptors.response.use(
           return api(originalConfig);
         } catch (_error) {
           console.log("Access token refresh failed");
-          toast.error("Session expired. Please login again.");
           return Promise.reject(_error);
         }
       }
@@ -227,6 +226,26 @@ export async function sendMessageApi(chatId: string, content: string) {
   }
 }
 
+export async function editMessageApi(messageId: string, content: string) {
+    try {
+    const res = await api.put(`/chat/edit/${messageId}`, { content });
+    return res.data;
+  } catch (error) {
+    console.error("Edit message error:", error);
+    throw error;
+  }
+}
+
+export async function deleteMessageApi(messageId: string) {
+    try {
+    const res = await api.delete(`/chat/delete/${messageId}`);
+    return res.data;
+  } catch (error) {
+    console.error("Delete message error:", error);
+    throw error;
+  }
+}
+
 
 export async function replyMessageApi(chatId: string, message: string) {
     try {
@@ -297,6 +316,46 @@ export async function blockUserApi(userId: string) {
     return res.data;
   } catch (error) {
     console.error("Block user error:", error);
+    throw error;
+  }
+}
+
+export async function unblockUserApi(userId: string) {
+  try {
+    const res = await api.post(`/user/unblock/${userId}`);
+    return res.data;
+  } catch (error) {
+    console.error("Unblock user error:", error);
+    throw error;
+  }
+}
+
+export async function getProfileApi() {
+  try {
+    const res = await api.get("/user/profile");
+    return res.data;
+  } catch (error) {
+    console.error("Get profile error:", error);
+    throw error;
+  }
+}
+
+export async function updateProfileApi(name?: string, bio?: string) {
+  try {
+    const res = await api.put("/user/profile", { name, bio });
+    return res.data;
+  } catch (error) {
+    console.error("Update profile error:", error);
+    throw error;
+  }
+}
+
+export async function updateVibeApi(vibes: string[]) {
+  try {
+    const res = await api.put("/user/profile/vibe", { vibes });
+    return res.data;
+  } catch (error) {
+    console.error("Update vibe error:", error);
     throw error;
   }
 }
