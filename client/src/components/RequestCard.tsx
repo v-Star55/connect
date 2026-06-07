@@ -1,10 +1,7 @@
 
 
-const requestCard=()=>{
-    
-    return(
-        
-    )
+const requestCard = () => {
+    return null;
 }
 
-export default requestCard
+export default requestCard;

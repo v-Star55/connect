@@ -68,7 +68,7 @@ const Login = () => {
     const handleSubmit = (e: React.FormEvent) => {
         e.preventDefault();
         if (!result.success) {
-            const firstError = result.error.errors[0];
+            const firstError = result.error.issues[0];
             toast.error(firstError.message);
             return;
         }
