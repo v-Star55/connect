@@ -3,9 +3,21 @@ import socket from "../socket";
 import { useInfiniteQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useSelector } from "react-redux";
 import { getMessagesApi, blockUserApi, unblockUserApi, clearChatApi, toggleMuteApi, toggleReadReceiptsApi, createChatApi, sendMessageApi, editMessageApi, deleteMessageApi } from "../api/api";
-import { Send, MoreVertical, Phone, Video, Smile, Paperclip, Loader2, ShieldAlert, Trash2, Eye, BellOff, Copy, Pencil, Check, X, MoreHorizontal, ChevronRight } from "lucide-react";
+import { Send, MoreVertical, Phone, Video, Smile, Paperclip, Loader2, ShieldAlert, Trash2, Eye, BellOff, Copy, Pencil, Check, X, MoreHorizontal, ChevronRight, MessageSquare } from "lucide-react";
 import { createPortal } from "react-dom";
 import { toast } from "react-hot-toast";
+import {
+  ContextMenu,
+  ContextMenuContent,
+  ContextMenuItem,
+  ContextMenuTrigger,
+} from "./ui/context-menu";
+import {
+  Avatar,
+  AvatarImage,
+  AvatarFallback,
+  AvatarBadge,
+} from "./ui/avatar";
 
 interface Message {
   _id: string;
@@ -109,8 +121,6 @@ const ChatScreen = ({ activeChat, currentUserId }: ChatScreenProps) => {
   
   const [editingMessageId, setEditingMessageId] = useState<string | null>(null);
   const [editingContent, setEditingContent] = useState("");
-  const [hoveredMessageId, setHoveredMessageId] = useState<string | null>(null);
-  const [openMessageOptionsId, setOpenMessageOptionsId] = useState<string | null>(null);
   const [deletingMessageId, setDeletingMessageId] = useState<string | null>(null);
   const [isBlockedByMe, setIsBlockedByMe] = useState(activeChat?.isBlockedByMe || false);
   const [isBlockedByOther, setIsBlockedByOther] = useState(activeChat?.isBlockedByOther || false);
@@ -459,12 +469,12 @@ const ChatScreen = ({ activeChat, currentUserId }: ChatScreenProps) => {
 
   if (!activeChat) {
     return (
-      <div className="flex-1 flex flex-col items-center justify-center text-gray-500 space-y-4">
-        <div className="w-20 h-20 rounded-full bg-white/5 flex items-center justify-center border border-white/10">
-           <Smile className="w-10 h-10 text-purple-500" />
+      <div className="flex-1 flex flex-col items-center justify-center text-zinc-400 space-y-4 bg-white select-none">
+        <div className="w-20 h-20 rounded-[28px] bg-zinc-50 flex items-center justify-center border border-zinc-100">
+           <MessageSquare className="w-9 h-9 text-zinc-300" />
         </div>
-        <h2 className="text-xl font-medium text-white">Select a conversation</h2>
-        <p className="max-w-xs text-center">Choose a friend from the sidebar to start a new conversation and stay connected.</p>
+        <h2 className="text-xl font-bold text-zinc-800">Select a conversation</h2>
+        <p className="max-w-xs text-center text-sm text-zinc-400">Choose a contact from the list or start a new chat to begin messaging.</p>
       </div>
     );
   }
@@ -472,94 +482,93 @@ const ChatScreen = ({ activeChat, currentUserId }: ChatScreenProps) => {
   const messages = [...(data?.pages.flatMap((page) => page.messages) || [])].reverse();
 
   return (
-    <div className="flex-1 flex flex-col h-full overflow-hidden bg-black/20 backdrop-blur-md border-l border-white/5">
+    <div className="flex-1 flex flex-col h-full overflow-hidden bg-white text-black border-l border-gray-100">
       {/* Header */}
-      <div className="h-20 px-6 flex items-center justify-between border-b border-white/5 bg-white/5">
+      <div className="h-20 px-6 flex items-center justify-between border-b border-gray-100 bg-white">
         <div className="flex items-center gap-4">
-          <div className="relative">
-            <img
-              src={activeChat.profilePicture || "/default-avatar.png"}
-              alt={activeChat.name}
-              className="w-12 h-12 rounded-full object-cover border-2 border-purple-500/30"
-            />
-            <div className="absolute bottom-0 right-0 w-3 h-3 bg-green-500 border-2 border-black rounded-full"></div>
-          </div>
+          <Avatar className="w-12 h-12 border border-zinc-200">
+            <AvatarImage src={activeChat.profilePicture} alt={activeChat.name} />
+            <AvatarFallback>
+              <img src="/userFallback.png" alt={activeChat.name} className="w-full h-full rounded-full object-cover" />
+            </AvatarFallback>
+            <AvatarBadge className="bg-[#40c057] w-3.5 h-3.5 border-2 border-white" />
+          </Avatar>
           <div>
-            <h3 className="font-bold text-lg text-white leading-tight">{activeChat.name}</h3>
+            <h3 className="font-bold text-lg text-zinc-900 leading-tight">{activeChat.name}</h3>
             {activeChat.vibes && activeChat.vibes.length > 0 && (
                 <div className="flex flex-wrap gap-1.5 mt-1">
                     {activeChat.vibes.slice(0, 3).map((vibe, i) => (
-                        <span key={i} className="text-[10px] bg-purple-500/10 text-purple-400 px-2 py-0.5 rounded-full border border-purple-500/20 font-medium">
+                        <span key={i} className="text-[10px] bg-zinc-100 text-zinc-600 px-2 py-0.5 rounded-full border border-zinc-200 font-medium">
                             {vibe}
                         </span>
                     ))}
                     {activeChat.vibes.length > 3 && (
-                        <span className="text-[10px] text-gray-500 px-1">+{activeChat.vibes.length - 3}</span>
+                        <span className="text-[10px] text-zinc-400 px-1">+{activeChat.vibes.length - 3}</span>
                     )}
                 </div>
             )}
           </div>
         </div>
         <div className="flex items-center gap-3">
-          <button className="p-2.5 rounded-xl hover:bg-white/10 text-gray-400 hover:text-white transition-all">
+          <button className="p-2.5 rounded-xl hover:bg-zinc-100 text-zinc-400 hover:text-zinc-700 transition-all cursor-pointer">
             <Phone className="w-5 h-5" />
           </button>
-          <button className="p-2.5 rounded-xl hover:bg-white/10 text-gray-400 hover:text-white transition-all">
+          <button className="p-2.5 rounded-xl hover:bg-zinc-100 text-zinc-400 hover:text-zinc-700 transition-all cursor-pointer">
             <Video className="w-5 h-5" />
           </button>
           
           <div className="relative" ref={dropdownRef}>
             <button 
               onClick={() => setIsOptionsOpen(!isOptionsOpen)}
-              className={`p-2.5 rounded-xl transition-all ${isOptionsOpen ? "bg-white/10 text-white" : "text-gray-400 hover:text-white hover:bg-white/10"}`}
+              className={`p-2.5 rounded-xl transition-all cursor-pointer ${isOptionsOpen ? "bg-zinc-100 text-zinc-700" : "text-zinc-400 hover:text-zinc-700 hover:bg-zinc-100"}`}
             >
               <MoreVertical className="w-5 h-5" />
             </button>
 
             {/* Dropdown Menu */}
             {isOptionsOpen && (
-              <div className="absolute right-0 top-full mt-2 w-56 bg-[#0a0a0a] border border-white/10 rounded-2xl shadow-2xl shadow-black/50 overflow-hidden animate-in fade-in zoom-in-95 duration-200 origin-top-right z-50">
+              <div className="absolute right-0 top-full mt-2 w-56 bg-white border border-gray-200 rounded-2xl shadow-2xl overflow-hidden animate-in fade-in zoom-in-95 duration-200 origin-top-right z-50">
                 <div className="p-2">
                   <button 
                     onClick={() => { muteMutation.mutate(!isMuted); setIsOptionsOpen(false); }}
-                    className="w-full flex items-center justify-between px-4 py-3 text-sm text-gray-300 hover:text-white hover:bg-white/5 rounded-xl transition-all"
+                    className="w-full flex items-center justify-between px-4 py-3 text-sm text-zinc-700 hover:bg-zinc-50 rounded-xl transition-all cursor-pointer border border-transparent"
                   >
                     <div className="flex items-center gap-3">
-                      <BellOff className={`w-4 h-4 ${isMuted ? "text-orange-500" : "text-gray-500"}`} />
+                      <BellOff className={`w-4 h-4 ${isMuted ? "text-orange-500" : "text-zinc-400"}`} />
                       <span>Mute Notifications</span>
                     </div>
-                    <div className={`w-8 h-4 rounded-full relative transition-colors duration-200 ${isMuted ? "bg-orange-500/50" : "bg-white/10"}`}>
-                      <div className={`absolute top-1 w-2 h-2 bg-white rounded-full transition-all duration-200 ${isMuted ? "right-1" : "left-1"}`}></div>
+                    <div className={`w-8 h-4 rounded-full relative transition-colors duration-200 ${isMuted ? "bg-orange-500" : "bg-zinc-200"}`}>
+                      <div className={`absolute top-0.5 w-3 h-3 bg-white rounded-full transition-all duration-200 ${isMuted ? "right-0.5" : "left-0.5"}`}></div>
                     </div>
                   </button>
                   
                   <button 
                     onClick={() => { readReceiptsMutation.mutate(!readReceipts); setIsOptionsOpen(false); }}
-                    className="w-full flex items-center justify-between px-4 py-3 text-sm text-gray-300 hover:text-white hover:bg-white/5 rounded-xl transition-all"
+                    className="w-full flex items-center justify-between px-4 py-3 text-sm text-zinc-700 hover:bg-zinc-50 rounded-xl transition-all cursor-pointer border border-transparent"
                   >
                     <div className="flex items-center gap-3">
-                      <Eye className={`w-4 h-4 ${readReceipts ? "text-blue-500" : "text-gray-500"}`} />
+                      <Eye className={`w-4 h-4 ${readReceipts ? "text-blue-500" : "text-zinc-400"}`} />
                       <span>Read Receipts</span>
                     </div>
-                    <div className={`w-8 h-4 rounded-full relative transition-colors duration-200 ${readReceipts ? "bg-purple-600/50" : "bg-white/10"}`}>
-                      <div className={`absolute top-1 w-2 h-2 bg-white rounded-full transition-all duration-200 ${readReceipts ? "right-1" : "left-1"}`}></div>
+                    <div className={`w-8 h-4 rounded-full relative transition-colors duration-200 ${readReceipts ? "bg-zinc-800" : "bg-zinc-200"}`}>
+                      <div className={`absolute top-0.5 w-3 h-3 bg-white rounded-full transition-all duration-200 ${readReceipts ? "right-0.5" : "left-0.5"}`}></div>
                     </div>
                   </button>
                 </div>
 
-                <div className="p-2 border-t border-white/5">
+                <div className="p-2 border-t border-gray-100">
                   <button 
                     onClick={() => { setIsOptionsOpen(false); setShowClearConfirm(true); }}
-                    className="w-full flex items-center gap-3 px-4 py-3 text-sm text-gray-300 hover:text-white hover:bg-white/5 rounded-xl transition-all"
+                    className="w-full flex items-center gap-3 px-4 py-3 text-sm text-zinc-700 hover:bg-zinc-50 rounded-xl transition-all cursor-pointer border border-transparent"
                   >
-                    <Trash2 className="w-4 h-4 text-gray-500" />
+                    <Trash2 className="w-4 h-4 text-zinc-400" />
                     <span>Clear Chat</span>
                   </button>
                   
                   <button 
                     onClick={() => { setIsOptionsOpen(false); if (isBlockedByMe) handleUnblockUser(); else setShowBlockConfirm(true); }}
-                    className={`w-full flex items-center gap-3 px-4 py-3 text-sm rounded-xl transition-all ${
-                      isBlockedByMe ? "text-green-400 hover:bg-green-500/10" : "text-red-400 hover:bg-red-500/10"
+                    className={`w-full flex items-center gap-3 px-4 py-3 text-sm rounded-xl transition-all cursor-pointer border border-transparent ${
+                      isBlockedByMe ? "text-green-600 hover:bg-green-50" : "text-red-600 hover:bg-red-50"
                     }`}
                   >
                     <ShieldAlert className="w-4 h-4" />
@@ -598,11 +607,11 @@ const ChatScreen = ({ activeChat, currentUserId }: ChatScreenProps) => {
       {/* Messages area */}
       <div 
         ref={scrollRef}
-        className="flex-1 overflow-y-auto p-6 space-y-6 scrollbar-hide"
+        className="flex-1 overflow-y-auto p-6 space-y-6 scrollbar-hide bg-zinc-50/20"
       >
         {isLoading ? (
             <div className="flex items-center justify-center h-full">
-                <Loader2 className="w-8 h-8 animate-spin text-purple-500" />
+                <Loader2 className="w-8 h-8 animate-spin text-[#82c91e]" />
             </div>
         ) : (
           <>
@@ -611,7 +620,7 @@ const ChatScreen = ({ activeChat, currentUserId }: ChatScreenProps) => {
                 <button 
                   onClick={() => fetchNextPage()}
                   disabled={isFetchingNextPage}
-                  className="text-xs text-purple-400 hover:text-purple-300 transition-colors"
+                  className="text-xs text-zinc-500 hover:text-zinc-800 transition-colors cursor-pointer"
                 >
                   {isFetchingNextPage ? "Loading older messages..." : "Load older messages"}
                 </button>
@@ -624,15 +633,11 @@ const ChatScreen = ({ activeChat, currentUserId }: ChatScreenProps) => {
 
                 const isMine = msg.sender._id === currentUserId;
                 const isEditing = editingMessageId === msg._id;
-                const isMenuOpen = openMessageOptionsId === msg._id;
-                const isHovered = hoveredMessageId === msg._id;
                 const isDeleting = deletingMessageId === msg._id;
 
                 // Check if under 30 minutes
                 const messageDate = new Date(msg.createdAt).getTime();
                 const canEdit = (now - messageDate) < 30 * 60 * 1000;
-                
-                const isFirstFewMessages = index < 3; // Oldest messages at the top
 
                 return (
                 <div 
@@ -640,110 +645,98 @@ const ChatScreen = ({ activeChat, currentUserId }: ChatScreenProps) => {
                   className={`flex ${isMine ? "justify-end" : "justify-start"} group/msg relative transition-all duration-300 ${
                     isDeleting ? "opacity-0 scale-95 -translate-y-4" : "opacity-100 scale-100"
                   }`}
-                  onMouseEnter={() => setHoveredMessageId(msg._id)}
-                  onMouseLeave={() => {
-                    setHoveredMessageId(null);
-                    if (!isMenuOpen) setOpenMessageOptionsId(null);
-                  }}
                 >
                   <div className={`flex flex-col max-w-[70%] ${isMine ? "items-end" : "items-start"} relative`}>
                     
                     {/* Message Content / Edit UI */}
                     <div className="flex items-center gap-2 group">
-                      {isMine && !isEditing && (isHovered || isMenuOpen) && (
-                        <div className="relative">
-                          <button 
-                            onClick={() => setOpenMessageOptionsId(isMenuOpen ? null : msg._id)}
-                            className="p-1.5 rounded-full hover:bg-white/10 text-gray-500 hover:text-white transition-all"
-                          >
-                            <MoreHorizontal className="w-4 h-4" />
-                          </button>
-
-                          {isMenuOpen && (
-                            <div className={`absolute right-0 ${isFirstFewMessages ? 'top-full mt-2' : 'bottom-full mb-2'} w-32 bg-[#0a0a0a] border border-white/10 rounded-xl shadow-2xl overflow-hidden z-50 animate-in fade-in zoom-in-95 duration-200`}>
-                              <button 
-                                onClick={() => {
-                                  navigator.clipboard.writeText(msg.content);
-                                  toast.success("Copied to clipboard");
-                                  setOpenMessageOptionsId(null);
-                                }}
-                                className="w-full flex items-center gap-2 px-3 py-2 text-xs text-gray-300 hover:text-white hover:bg-white/5 transition-all"
-                              >
-                                <Copy className="w-3.5 h-3.5" />
-                                <span>Copy</span>
-                              </button>
-                              
-                              {canEdit && (
-                                <button 
-                                  onClick={() => {
-                                    setEditingMessageId(msg._id);
-                                    setEditingContent(msg.content);
-                                    setOpenMessageOptionsId(null);
-                                  }}
-                                  className="w-full flex items-center gap-2 px-3 py-2 text-xs text-gray-300 hover:text-white hover:bg-white/5 transition-all"
-                                >
-                                  <Pencil className="w-3.5 h-3.5" />
-                                  <span>Edit</span>
-                                </button>
-                              )}
-
-                              <button 
-                                onClick={() => {
-                                  handleDeleteMessage(msg._id);
-                                  setOpenMessageOptionsId(null);
-                                }}
-                                className="w-full flex items-center gap-2 px-3 py-2 text-xs text-red-400 hover:text-red-300 hover:bg-red-500/10 transition-all border-t border-white/5"
-                              >
-                                <Trash2 className="w-3.5 h-3.5" />
-                                <span>Delete</span>
-                              </button>
-                            </div>
-                          )}
-                        </div>
-                      )}
-
                       {isEditing ? (
-                        <div className="flex flex-col bg-white/10 rounded-2xl border border-purple-500/30 overflow-hidden">
+                        <div className="flex flex-col bg-zinc-50 rounded-2xl border border-zinc-200 overflow-hidden">
                           <textarea
-                            className="bg-transparent p-3 text-sm text-white focus:outline-none min-w-[200px] resize-none"
+                            className="bg-transparent p-3 text-sm text-zinc-800 focus:outline-none min-w-[200px] resize-none"
                             value={editingContent}
                             onChange={(e) => setEditingContent(e.target.value)}
                             rows={2}
                             autoFocus
                           />
-                          <div className="flex justify-end gap-1 p-1 bg-black/20">
+                          <div className="flex justify-end gap-1 p-1 bg-zinc-100">
                             <button 
                               onClick={() => setEditingMessageId(null)}
-                              className="p-1.5 rounded-lg hover:bg-white/10 text-gray-400 transition-all"
+                              className="p-1.5 rounded-lg hover:bg-zinc-200 text-zinc-500 transition-all cursor-pointer"
                             >
                               <X className="w-4 h-4" />
                             </button>
                             <button 
                               onClick={() => handleEditMessage(msg._id)}
-                              className="p-1.5 rounded-lg hover:bg-purple-600/20 text-purple-400 transition-all"
+                              className="p-1.5 rounded-lg hover:bg-zinc-200 text-zinc-700 transition-all cursor-pointer"
                             >
                               <Check className="w-4 h-4" />
                             </button>
                           </div>
                         </div>
                       ) : (
-                        <div className={`px-4 py-3 rounded-2xl text-sm leading-relaxed ${
-                          isMine 
-                            ? "bg-linear-to-tr from-purple-600 to-fuchsia-600 text-white rounded-tr-none shadow-lg shadow-purple-900/20" 
-                            : "bg-white/10 text-gray-100 rounded-tl-none border border-white/5"
-                        }`}>
-                          {msg.content}
-                        </div>
+                        <ContextMenu>
+                          <ContextMenuTrigger className="select-text">
+                            <div className={`px-4 py-3 rounded-2xl text-sm leading-relaxed cursor-context-menu ${
+                              isMine 
+                                ? "bg-zinc-950 text-white rounded-tr-none shadow-sm border border-zinc-800" 
+                                : "bg-white text-zinc-900 rounded-tl-none shadow-sm border border-zinc-200/80"
+                            }`}>
+                              {msg.content}
+                            </div>
+                          </ContextMenuTrigger>
+                          <ContextMenuContent className="w-36 bg-white border border-zinc-200 rounded-xl shadow-2xl p-1 z-50 animate-in fade-in zoom-in-95 duration-100">
+                            <ContextMenuItem 
+                              onClick={() => {
+                                navigator.clipboard.writeText(msg.content);
+                                toast.success("Copied to clipboard");
+                              }}
+                              className="flex items-center gap-2 px-3 py-2 text-xs text-zinc-700 hover:text-zinc-900 hover:bg-zinc-50 transition-all cursor-pointer rounded-lg outline-none"
+                            >
+                              <Copy className="w-3.5 h-3.5 text-zinc-400" />
+                              <span>Copy</span>
+                            </ContextMenuItem>
+                            
+                            {isMine && canEdit && (
+                              <ContextMenuItem 
+                                onClick={() => {
+                                  setEditingMessageId(msg._id);
+                                  setEditingContent(msg.content);
+                                }}
+                                className="flex items-center gap-2 px-3 py-2 text-xs text-zinc-700 hover:text-zinc-900 hover:bg-zinc-50 transition-all cursor-pointer rounded-lg outline-none"
+                              >
+                                <Pencil className="w-3.5 h-3.5 text-zinc-400" />
+                                <span>Edit</span>
+                              </ContextMenuItem>
+                            )}
+
+                            {isMine && (
+                              <ContextMenuItem 
+                                onClick={() => {
+                                  handleDeleteMessage(msg._id);
+                                }}
+                                variant="destructive"
+                                className="flex items-center gap-2 px-3 py-2 text-xs text-red-600 hover:text-red-500 hover:bg-red-50/50 transition-all cursor-pointer rounded-lg outline-none border-t border-gray-100 mt-1 pt-2"
+                              >
+                                <Trash2 className="w-3.5 h-3.5" />
+                                <span>Delete</span>
+                              </ContextMenuItem>
+                            )}
+                          </ContextMenuContent>
+                        </ContextMenu>
                       )}
                     </div>
 
                     <div className={`flex items-center gap-1.5 mt-1 px-1 ${isMine ? "justify-end" : "justify-start"}`}>
                       {msg.isEdited && (
-                        <span className="text-[9px] text-gray-500 italic opacity-70">edited</span>
+                        <span className="text-[9px] text-zinc-400 italic opacity-70">edited</span>
                       )}
-                      <span className="text-[10px] text-gray-500">
+                      <span className="text-[10px] text-zinc-400">
                         {new Date(msg.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
                       </span>
+                      {isMine && (
+                          <span className="text-[#82c91e] font-semibold text-[10px] ml-0.5">✓✓</span>
+                      )}
                     </div>
                   </div>
                 </div>
@@ -758,14 +751,14 @@ const ChatScreen = ({ activeChat, currentUserId }: ChatScreenProps) => {
       {(() => {
         if (isBlockedByMe) {
           return (
-            <div className="p-8 bg-black/60 backdrop-blur-md border-t border-white/10 flex flex-col items-center gap-5 animate-in fade-in slide-in-from-bottom-4 duration-500">
-               <div className="flex items-center gap-3 bg-red-500/10 px-6 py-3 rounded-full border border-red-500/20 shadow-2xl">
-                  <ShieldAlert className="w-5 h-5 text-red-500" />
-                  <span className="text-gray-200 text-sm font-semibold tracking-wide">You have blocked this user. Unblock to send messages.</span>
+            <div className="p-8 bg-zinc-50/80 border-t border-gray-100 flex flex-col items-center gap-5 animate-in fade-in slide-in-from-bottom-4 duration-500">
+               <div className="flex items-center gap-3 bg-red-50 px-6 py-3 rounded-full border border-red-200 shadow-xs">
+                  <ShieldAlert className="w-5 h-5 text-red-600" />
+                  <span className="text-red-700 text-sm font-semibold tracking-wide">You have blocked this user. Unblock to send messages.</span>
                </div>
                <button 
                 onClick={handleUnblockUser}
-                className="group px-10 py-3.5 bg-linear-to-r from-purple-600 to-fuchsia-600 hover:from-purple-500 hover:to-fuchsia-500 text-white rounded-2xl text-sm font-black transition-all shadow-xl shadow-purple-900/30 active:scale-95 flex items-center gap-2 hover:gap-3"
+                className="group px-10 py-3.5 bg-zinc-950 hover:bg-black text-white rounded-2xl text-sm font-black transition-all shadow-md active:scale-95 flex items-center gap-2 hover:gap-3 cursor-pointer"
                >
                  <span>Unblock to Chat</span>
                  <ChevronRight className="w-4 h-4" />
@@ -776,38 +769,38 @@ const ChatScreen = ({ activeChat, currentUserId }: ChatScreenProps) => {
 
         if (isBlockedByOther) {
           return (
-            <div className="p-8 bg-black/60 backdrop-blur-md border-t border-white/10 flex flex-col items-center gap-5 animate-in fade-in slide-in-from-bottom-4 duration-500">
-               <div className="flex items-center gap-3 bg-red-500/10 px-6 py-3 rounded-full border border-red-500/20 shadow-2xl">
-                  <ShieldAlert className="w-5 h-5 text-red-500" />
-                  <span className="text-gray-200 text-sm font-semibold tracking-wide">You are blocked by this user. You cannot send messages.</span>
+            <div className="p-8 bg-zinc-50/80 border-t border-gray-100 flex flex-col items-center gap-5 animate-in fade-in slide-in-from-bottom-4 duration-500">
+               <div className="flex items-center gap-3 bg-red-50 px-6 py-3 rounded-full border border-red-200 shadow-xs">
+                  <ShieldAlert className="w-5 h-5 text-red-600" />
+                  <span className="text-red-700 text-sm font-semibold tracking-wide">You are blocked by this user. You cannot send messages.</span>
                </div>
-               <p className="text-gray-500 text-xs italic">Messaging is disabled for this conversation.</p>
+               <p className="text-zinc-400 text-xs italic">Messaging is disabled for this conversation.</p>
             </div>
           );
         }
 
         return (
-          <div className="p-6 bg-white/5 border-t border-white/5">
+          <div className="p-5 bg-white border-t border-gray-100">
             <form 
-              className="flex items-center gap-4 bg-white/5 p-2 px-4 rounded-2xl border border-white/10 focus-within:border-purple-500/50 transition-all"
+              className="flex items-center gap-4 bg-zinc-50 border border-zinc-200/80 p-2.5 px-4.5 rounded-[22px] focus-within:border-zinc-300 focus-within:bg-zinc-100/20 transition-all"
               onSubmit={(e) => { e.preventDefault(); handleSendMessage(); }}
             >
-              <button type="button" className="text-gray-400 hover:text-purple-400 transition-colors">
+              <button type="button" className="text-zinc-400 hover:text-zinc-600 transition-colors cursor-pointer">
                 <Smile className="w-5 h-5" />
               </button>
-              <button type="button" className="text-gray-400 hover:text-purple-400 transition-colors">
+              <button type="button" className="text-zinc-400 hover:text-zinc-600 transition-colors cursor-pointer">
                 <Paperclip className="w-5 h-5" />
               </button>
               <textarea
-            rows={3}
+                rows={1}
                 value={messageText}
                 onChange={(e) => {
                   setMessageText(e.target.value);
                   e.target.style.height = "auto";
                   e.target.style.height = `${e.target.scrollHeight}px`;
                 }}
-                placeholder="Type your message..."
-                className="flex-1 bg-transparent py-2 text-sm text-white focus:outline-none placeholder:text-gray-600 resize-none max-h-32"
+                placeholder="Type a message..."
+                className="flex-1 bg-transparent py-1.5 text-sm text-zinc-800 focus:outline-none placeholder:text-zinc-400 resize-none max-h-32 min-h-[24px]"
                 onKeyDown={(e) => {
                   if (e.key === "Enter" && !e.shiftKey) {
                     e.preventDefault();
@@ -818,9 +811,9 @@ const ChatScreen = ({ activeChat, currentUserId }: ChatScreenProps) => {
               <button 
                 type="submit" 
                 disabled={!messageText.trim()}
-            className="px-6 py-8 rounded-xl bg-purple-600 text-white hover:bg-purple-500 disabled:opacity-50 disabled:cursor-not-allowed transition-all"
+                className="w-10 h-10 rounded-full bg-[#121212] hover:bg-black text-white disabled:opacity-30 disabled:cursor-not-allowed flex items-center justify-center transition-all flex-shrink-0 cursor-pointer shadow-sm"
               >
-            <Send className="w-6 h-6" />
+                <Send className="w-4.5 h-4.5" />
               </button>
             </form>
           </div>

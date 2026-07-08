@@ -340,9 +340,9 @@ export async function getProfileApi() {
   }
 }
 
-export async function updateProfileApi(name?: string, bio?: string) {
+export async function updateProfileApi(name?: string, bio?: string, profilePicture?: string) {
   try {
-    const res = await api.put("/user/profile", { name, bio });
+    const res = await api.put("/user/profile", { name, bio, profilePicture });
     return res.data;
   } catch (error) {
     console.error("Update profile error:", error);

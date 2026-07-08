@@ -2,7 +2,7 @@ import User from "../../db/models/User.js";
 
 export const updateProfile = async (req, res) => {
   try {
-    const { name, bio } = req.body;
+    const { name, bio, profilePicture } = req.body;
     const userId = req.user.id;
 
     if (bio && bio.length > 50) {
@@ -12,6 +12,7 @@ export const updateProfile = async (req, res) => {
     const updates = {};
     if (name) updates.name = name;
     if (bio !== undefined) updates.bio = bio; 
+    if (profilePicture !== undefined) updates.profilePicture = profilePicture;
 
     const updatedUser = await User.findByIdAndUpdate(
       userId,
