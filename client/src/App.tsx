@@ -1,6 +1,5 @@
 import { BrowserRouter, Route,Routes } from 'react-router-dom'
 import Login from './auth/login'
-import Register from './auth/register'
 import ForgotPassword from './auth/forgotPassword'
 import ProtectedRoute from './protectedRoute'
 import GuestRoute from './GuestRoute'
@@ -43,7 +42,7 @@ function App() {
       <Routes>
         <Route element={<GuestRoute />}>
           <Route path="/login" element={<Login />} />
-          <Route path="/register" element={<Register />} />
+          <Route path="/register" element={<Login />} />
           <Route path="/forgot-password" element={<ForgotPassword />} />
         </Route>
 

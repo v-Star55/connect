@@ -1,9 +1,9 @@
 import { useState } from "react";
 import { Link, useNavigate, useLocation } from "react-router-dom";
 import { useSelector, useDispatch } from "react-redux";
-import { useQueryClient } from "@tanstack/react-query";
+import { useQueryClient, useInfiniteQuery } from "@tanstack/react-query";
 import { logout } from "../slice/auth/authSlice";
-import { logoutApi } from "../api/api";
+import { logoutApi, getUserConnectionRequestApi } from "../api/api";
 import { 
   Search, 
   UserPlus, 
@@ -11,9 +11,10 @@ import {
   LogOut, 
   Settings, 
   MessageSquare,
+  Sparkles,
 } from "lucide-react";
 import toast from "react-hot-toast";
-import ConnectionRequestsModal from "./ConnectionRequestsModal";
+import ConfirmationModal from "./ui/ConfirmationModal";
 
 import {
   Sidebar as ShadcnSidebar,
@@ -25,35 +26,47 @@ import {
   SidebarMenu,
   SidebarMenuButton,
   SidebarMenuItem,
-  SidebarTrigger,
-  useSidebar,
 } from "./ui/sidebar";
 import { TooltipProvider } from "./ui/tooltip";
 
-const Sidebar = () => {
+const Sidebar = ({ onOpenRequests }: { readonly onOpenRequests: () => void }) => {
     const user = useSelector((state: any) => state.auth.user);
     const dispatch = useDispatch();
     const navigate = useNavigate();
     const location = useLocation();
     const queryClient = useQueryClient();
     
-    const { state } = useSidebar();
-    const [isRequestsModalOpen, setIsRequestsModalOpen] = useState(false);
-
-    const isExpanded = state === "expanded";
+    const [isLogoutConfirmOpen, setIsLogoutConfirmOpen] = useState(false);
+    const [isLoggingOut, setIsLoggingOut] = useState(false);
 
     const handleLogout = async () => {
+        setIsLoggingOut(true);
         try {
             await logoutApi();
             toast.success("Logged out successfully");
         } catch (error) {
             console.log("Logout error:", error);
         } finally {
+            setIsLoggingOut(false);
+            setIsLogoutConfirmOpen(false);
             dispatch(logout());
             queryClient.removeQueries();
             navigate("/login");
         }
     };
+
+    // Fetch pending requests count dynamically
+    const { data: requestsData } = useInfiniteQuery({
+        queryKey: ["connection-requests"],
+        queryFn: ({ pageParam }) => getUserConnectionRequestApi(pageParam),
+        initialPageParam: 1,
+        getNextPageParam: (lastPage) => lastPage.next,
+        staleTime: 5 * 60 * 1000,
+    });
+    
+    const requestsCount = requestsData?.pages
+        ? requestsData.pages.reduce((acc, page) => acc + (page?.requests?.length || 0), 0)
+        : 0;
 
     const menuItems = [
         { 
@@ -72,7 +85,7 @@ const Sidebar = () => {
             icon: UserPlus, 
             label: "Requests", 
             type: "button", 
-            onClick: () => setIsRequestsModalOpen(true)
+            onClick: onOpenRequests
         },
         { 
             icon: User, 
@@ -83,121 +96,188 @@ const Sidebar = () => {
         },
     ];
 
-    const bottomItems = [
-        { 
-            icon: Settings, 
-            label: "Settings", 
-            type: "button", 
-            onClick: () => toast("Settings feature coming soon!", { icon: "⚙️" }) 
-        },
-        { 
-            icon: LogOut, 
-            label: "Logout", 
-            type: "button", 
-            onClick: handleLogout,
-            isDanger: true 
-        },
-    ];
-
     return (
         <TooltipProvider>
             <ShadcnSidebar 
-                collapsible="icon" 
-                className="border-r border-zinc-900 bg-[#0c0c0e] py-6 select-none relative"
+                collapsible="none" 
+                className="!bg-transparent !border-none !shadow-none p-0 select-none relative h-full hidden xl:flex flex-col"
             >
-                {/* Floating expand/collapse trigger button */}
-                <SidebarTrigger className="absolute top-8 -right-3.5 w-7 h-7 rounded-full bg-zinc-800 border border-zinc-700 flex items-center justify-center text-gray-400 hover:text-white transition-all shadow-md z-50 cursor-pointer hover:bg-zinc-700" />
+                {/* Floating glassmorphic card container */}
+                <div className="flex-1 flex flex-col justify-between m-4 mr-2  backdrop-blur-md border border-white/15 rounded-[32px] overflow-hidden relative font-outfit">
+                    
+                    {/* Upper Half: Logo & Main Navigation */}
+                    <div className="flex flex-col flex-1">
+                        {/* Logo / Header */}
+                        <SidebarHeader className="p-6 mb-2 shrink-0">
+                            <Link to="/" className="flex items-center gap-3 group">
+                                <div className="p-2 bg-gradient-to-tr from-violet-500 to-indigo-500 rounded-xl shadow-md shadow-indigo-500/25">
+                                    {/* Custom gradient cloud SVG */}
+                                    <svg className="w-5 h-5 text-white" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                                        <defs>
+                                            <linearGradient id="cloudGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+                                                <stop offset="0%" stopColor="#c084fc" />
+                                                <stop offset="100%" stopColor="#6366f1" />
+                                            </linearGradient>
+                                        </defs>
+                                        <path d="M17.5 19A3.5 3.5 0 0 0 21 15.5c0-2.79-2.54-4.5-5-4.5-.48 0-.92.07-1.34.2-1.12-3-4.14-5.2-7.66-5.2A8 8 0 0 0 1 14a5.5 5.5 0 0 0 5.5 5.5z" fill="url(#cloudGrad)" stroke="none" />
+                                        <path d="M17.5 19A3.5 3.5 0 0 0 21 15.5c0-2.79-2.54-4.5-5-4.5-.48 0-.92.07-1.34.2-1.12-3-4.14-5.2-7.66-5.2A8 8 0 0 0 1 14a5.5 5.5 0 0 0 5.5 5.5z" fill="none" stroke="white" strokeWidth="1.5" />
+                                    </svg>
+                                </div>
+                                <div className="flex flex-col">
+                                    <span className="text-base font-black text-white leading-none tracking-wide animate-in fade-in duration-300">
+                                        Connect
+                                    </span>
+                                    <span className="text-[9px] font-extrabold text-white/60 leading-none tracking-wider uppercase mt-1">
+                                        Always Connected
+                                    </span>
+                                </div>
+                            </Link>
+                        </SidebarHeader>
 
-                {/* Logo / Header */}
-                <SidebarHeader className={`mb-6 w-full ${isExpanded ? "px-4" : "flex items-center justify-center p-0"}`}>
-                    <Link to="/" className="flex items-center gap-3.5 group">
-                        {isExpanded ? (
-                            <span className="text-xl font-black text-white tracking-wide animate-in fade-in duration-300">
-                                Connect
-                            </span>
-                        ) : (
-                            <span className="text-xl font-black text-[#c5ff1a] tracking-wide animate-in fade-in duration-300">
-                                C
-                            </span>
-                        )}
-                    </Link>
-                </SidebarHeader>
+                        {/* Navigation Menu */}
+                        <SidebarContent className="px-4 py-2 flex-1">
+                            <SidebarGroup className="p-0">
+                                <SidebarGroupContent>
+                                    <SidebarMenu className="gap-2">
+                                        {menuItems.map((item) => {
+                                            const isActive = item.path ? location.pathname === item.path : false;
+                                            const Icon = item.icon;
 
-                {/* Main Content / Navigation Group */}
-                <SidebarContent className={isExpanded ? "px-2" : "px-1"}>
-                    <SidebarGroup className="p-0">
-                        <SidebarGroupContent>
-                            <SidebarMenu className="gap-1.5">
-                                {menuItems.map((item) => {
-                                    const isActive = item.path ? location.pathname === item.path : false;
-                                    const Icon = item.icon;
+                                            return (
+                                                <SidebarMenuItem key={item.label}>
+                                                    <SidebarMenuButton
+                                                        isActive={isActive}
+                                                        tooltip={item.label}
+                                                        className={`flex items-center justify-between p-3.5 h-12 rounded-xl transition-all relative group cursor-pointer w-full text-sm font-semibold border border-transparent ${
+                                                            isActive 
+                                                                ? "!bg-gradient-to-r !from-violet-500/25 !to-indigo-500/25 !text-white !border-white/20 !shadow-md shadow-indigo-500/5" 
+                                                                : "!text-white/70 hover:!text-white hover:!bg-white/10"
+                                                        }`}
+                                                        render={
+                                                            item.type === "link" && item.path ? (
+                                                                <Link to={item.path} />
+                                                            ) : (
+                                                                <button onClick={item.onClick} />
+                                                            )
+                                                        }
+                                                    >
+                                                        <div className="flex items-center gap-3.5">
+                                                            {item.isProfile && user?.profilePicture ? (
+                                                                <img 
+                                                                    src={user.profilePicture} 
+                                                                    alt="Profile" 
+                                                                    className={`w-5 h-5 rounded-full object-cover border ${
+                                                                        isActive ? "border-white" : "border-white/20 group-hover:border-white/50"
+                                                                    }`} 
+                                                                />
+                                                            ) : (
+                                                                <Icon className="w-5 h-5 flex-shrink-0" />
+                                                            )}
+                                                            <span>{item.label}</span>
+                                                        </div>
 
-                                    return (
-                                        <SidebarMenuItem key={item.label}>
-                                            <SidebarMenuButton
-                                                isActive={isActive}
-                                                tooltip={item.label}
-                                                className="flex items-center gap-3.5 p-3 h-11 rounded-xl transition-all relative group cursor-pointer w-full text-zinc-400 hover:text-white hover:bg-zinc-800/40 data-active:bg-zinc-800/80 data-active:text-white data-active:font-semibold"
-                                                render={
-                                                    item.type === "link" && item.path ? (
-                                                        <Link to={item.path} />
-                                                    ) : (
-                                                        <button onClick={item.onClick} />
-                                                    )
-                                                }
-                                            >
-                                                {item.isProfile && user?.profilePicture ? (
-                                                    <img 
-                                                        src={user.profilePicture} 
-                                                        alt="Profile" 
-                                                        className="w-5 h-5 rounded-full object-cover border border-zinc-700" 
-                                                    />
-                                                ) : (
-                                                    <Icon className="w-5 h-5 flex-shrink-0" />
-                                                )}
-                                                <span>{item.label}</span>
-                                            </SidebarMenuButton>
-                                        </SidebarMenuItem>
-                                    );
-                                })}
-                            </SidebarMenu>
-                        </SidebarGroupContent>
-                    </SidebarGroup>
-                </SidebarContent>
+                                                        {/* Requests Badge */}
+                                                        {item.label === "Requests" && requestsCount > 0 && (
+                                                            <span className={`flex items-center justify-center min-w-[20px] h-5 px-1.5 rounded-full text-[10px] font-black tracking-wide ${
+                                                                isActive 
+                                                                    ? "bg-white text-indigo-750" 
+                                                                    : "bg-gradient-to-r from-violet-600 to-indigo-600 text-white border border-white/10"
+                                                            }`}>
+                                                                {requestsCount}
+                                                            </span>
+                                                        )}
+                                                    </SidebarMenuButton>
+                                                </SidebarMenuItem>
+                                            );
+                                        })}
+                                    </SidebarMenu>
+                                </SidebarGroupContent>
+                            </SidebarGroup>
+                        </SidebarContent>
+                    </div>
 
-                {/* Bottom Footer Actions */}
-                <SidebarFooter className={`mt-auto pt-6 border-t border-zinc-900/60 ${isExpanded ? "px-2" : "px-1"}`}>
-                    <SidebarMenu className="gap-1.5">
-                        {bottomItems.map((item) => {
-                            const Icon = item.icon;
+                    {/* Lower Half: Promo Card & Footer */}
+                    <div className="shrink-0 flex flex-col">
+                        
+                        <div className="h-px bg-white/10 mx-6 my-2" />
 
-                            return (
-                                <SidebarMenuItem key={item.label}>
+                        {/* Settings Button */}
+                        <div className="px-4 py-1">
+                            <SidebarMenu>
+                                <SidebarMenuItem>
                                     <SidebarMenuButton
-                                        tooltip={item.label}
-                                        className={`flex items-center gap-3.5 p-3 h-11 rounded-xl transition-all relative group cursor-pointer w-full ${
-                                            item.isDanger 
-                                                ? "text-red-400 hover:text-red-300 hover:bg-red-500/10" 
-                                                : "text-zinc-400 hover:text-white hover:bg-zinc-800/40"
-                                        }`}
+                                        tooltip="Settings"
+                                        className="flex items-center gap-3.5 p-3.5 h-12 rounded-xl transition-all relative group cursor-pointer w-full text-sm font-semibold !text-white/70 hover:!text-white hover:!bg-white/10"
                                         render={
-                                            <button onClick={item.onClick} />
+                                            <button onClick={() => toast("Settings feature coming soon!", { icon: "⚙️" })} />
                                         }
                                     >
-                                        <Icon className="w-5 h-5 flex-shrink-0" />
-                                        <span>{item.label}</span>
+                                        <Settings className="w-5 h-5 flex-shrink-0" />
+                                        <span>Settings</span>
                                     </SidebarMenuButton>
                                 </SidebarMenuItem>
-                            );
-                        })}
-                    </SidebarMenu>
-                </SidebarFooter>
+                            </SidebarMenu>
+                        </div>
 
-                <ConnectionRequestsModal 
-                    isOpen={isRequestsModalOpen} 
-                    onClose={() => setIsRequestsModalOpen(false)} 
-                />
+                        {/* Upgrade to Premium Promo Card */}
+                        <div className="mx-4 my-3 p-4 rounded-2xl bg-white/10 border border-white/15 backdrop-blur-md relative overflow-hidden group">
+                            {/* Subtle background glow */}
+                            <div className="absolute -right-6 -bottom-6 w-20 h-20 bg-indigo-500/10 rounded-full blur-xl group-hover:bg-indigo-500/20 transition-all duration-500" />
+                            
+                            {/* Promo Card Graphic */}
+                            <div className="flex items-center justify-center mb-3">
+                                <div className="p-3 bg-gradient-to-tr from-purple-500/10 to-indigo-500/10 rounded-2xl border border-white/10">
+                                    <Sparkles className="w-8 h-8 text-indigo-300 animate-pulse" />
+                                </div>
+                            </div>
+
+                            <div className="text-center space-y-1">
+                                <h3 className="text-xs font-extrabold text-white">Upgrade to Premium</h3>
+                                <p className="text-[10px] text-white/60 leading-normal max-w-[160px] mx-auto font-semibold">
+                                    Unlock exclusive features and cloud storage.
+                                </p>
+                            </div>
+
+                            <button 
+                                onClick={() => toast.success("Premium upgrade feature coming soon!")}
+                                className="w-full mt-3.5 py-2 px-4 rounded-xl bg-gradient-to-r from-violet-500 to-indigo-500 hover:from-violet-450 hover:to-indigo-450 text-white text-[11px] font-extrabold flex items-center justify-center gap-1.5 shadow-md shadow-indigo-500/20 hover:scale-[1.02] active:scale-[0.98] transition-all cursor-pointer"
+                            >
+                                Upgrade Now 👑
+                            </button>
+                        </div>
+
+                        {/* Logout Section */}
+                        <SidebarFooter className="p-4 border-t border-white/10 bg-white/5 mt-2">
+                            <SidebarMenu>
+                                <SidebarMenuItem>
+                                    <SidebarMenuButton
+                                        tooltip="Logout"
+                                        className="flex items-center gap-3.5 p-3.5 h-12 rounded-xl transition-all relative group cursor-pointer w-full text-sm font-semibold !text-red-400 hover:!text-red-300 hover:!bg-red-500/10"
+                                        render={
+                                            <button onClick={() => setIsLogoutConfirmOpen(true)} />
+                                        }
+                                    >
+                                        <LogOut className="w-5 h-5 flex-shrink-0" />
+                                        <span>Logout</span>
+                                    </SidebarMenuButton>
+                                </SidebarMenuItem>
+                            </SidebarMenu>
+                        </SidebarFooter>
+                    </div>
+
+                </div>
             </ShadcnSidebar>
+
+            <ConfirmationModal
+                isOpen={isLogoutConfirmOpen}
+                onClose={() => setIsLogoutConfirmOpen(false)}
+                onConfirm={handleLogout}
+                title="Log out of Connect?"
+                description="Are you sure you want to log out? You will need to sign in again to access your messages and streak active days."
+                confirmText="Log Out"
+                type="logout"
+                isPending={isLoggingOut}
+            />
         </TooltipProvider>
     );
 };

@@ -138,9 +138,9 @@ export async function meApi() {
 // ////////////////////////////  USER API
 
 
-export async function searchUsers(query: string, page: number = 1) {
+export async function searchUsers(query: string, page: number = 1, vibe: string = "All", sortBy: string = "suggested") {
   try {
-    const res = await api.get(`/user/search?q=${query}&page=${page}`);
+    const res = await api.get(`/user/search?q=${query}&page=${page}&vibe=${encodeURIComponent(vibe)}&sortBy=${sortBy}`);
     return res.data;
   } catch (error) {
     console.error("Search users error:", error);

@@ -532,21 +532,11 @@ button {
   }
 }
 
-/* Sidebar Link and Element Styles - Disable violet colors and enforce gray/white font */
-[data-sidebar="sidebar"] a,
-[data-sidebar="sidebar"] button {
-  color: inherit !important;
-  text-decoration: none !important;
-}
-
-[data-sidebar="sidebar"] a:hover,
-[data-sidebar="sidebar"] button:hover {
-  color: #ffffff !important;
-}
-
-[data-sidebar="sidebar"] svg {
-  color: inherit !important;
-  stroke: currentColor !important;
+/* Sidebar Link and Element Styles - Enforce transparent background for glassmorphism */
+[data-sidebar="sidebar"] {
+  background-color: transparent !important;
+  border-right: none !important;
+  border-left: none !important;
 }
 
 /* Scrollbar Utilities */
@@ -577,4 +567,87 @@ button {
 .custom-scrollbar {
   scrollbar-width: thin;
   scrollbar-color: rgba(161, 161, 170, 0.35) transparent;
+}
+
+/* ===== Floating Soap Bubbles Animations ===== */
+@keyframes floatUp {
+  0% {
+    transform: translateY(110vh) translateX(0) scale(0.6);
+    opacity: 0;
+  }
+  10% {
+    opacity: 0.8;
+  }
+  90% {
+    opacity: 0.8;
+  }
+  100% {
+    transform: translateY(-10vh) translateX(100px) scale(1.1);
+    opacity: 0;
+  }
+}
+
+@keyframes floatUpAlternate {
+  0% {
+    transform: translateY(110vh) translateX(0) scale(0.8);
+    opacity: 0;
+  }
+  15% {
+    opacity: 0.9;
+  }
+  85% {
+    opacity: 0.9;
+  }
+  100% {
+    transform: translateY(-10vh) translateX(-80px) scale(0.7);
+    opacity: 0;
+  }
+}
+
+.bubble {
+  bottom: -150px;
+  animation-iteration-count: infinite;
+  animation-timing-function: ease-in-out;
+}
+
+.bubble-1 {
+  width: 45px;
+  height: 45px;
+  left: 10%;
+  animation: floatUp 22s infinite 0s;
+}
+
+.bubble-2 {
+  width: 65px;
+  height: 65px;
+  left: 25%;
+  animation: floatUpAlternate 28s infinite 2s;
+}
+
+.bubble-3 {
+  width: 35px;
+  height: 35px;
+  left: 45%;
+  animation: floatUp 18s infinite 5s;
+}
+
+.bubble-4 {
+  width: 80px;
+  height: 80px;
+  left: 65%;
+  animation: floatUpAlternate 32s infinite 1s;
+}
+
+.bubble-5 {
+  width: 50px;
+  height: 50px;
+  left: 80%;
+  animation: floatUp 25s infinite 4s;
+}
+
+.bubble-6 {
+  width: 30px;
+  height: 30px;
+  left: 90%;
+  animation: floatUpAlternate 20s infinite 7s;
 }

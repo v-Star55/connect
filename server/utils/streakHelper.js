@@ -8,9 +8,9 @@ const isNextDay = (date1, date2) => {
   d1.setHours(0, 0, 0, 0);
   d2.setHours(0, 0, 0, 0);
   
-  const diffTime = Math.abs(d2 - d1);
-  const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24)); 
-  return diffDays === 1;
+  const nextDayOfD1 = new Date(d1);
+  nextDayOfD1.setDate(d1.getDate() + 1);
+  return nextDayOfD1.toDateString() === d2.toDateString();
 };
 
 // Helper to check if two dates are same day
@@ -28,6 +28,8 @@ export const updateAppStreak = async (userId) => {
     }
 
     const user = await User.findById(userId);
+    if (!user) return;
+
     const lastActive = user.lastActive || new Date(0);
     const now = new Date();
 
@@ -49,9 +51,9 @@ export const updateAppStreak = async (userId) => {
         stats.longestStreak = stats.appStreak;
     }
     
-    // Update user's lastActive is done via middleware or login usually, 
-    // but we can ensure it here if this is called on a dedicated "check streak" event.
-    // For now assuming caller updates user.lastActive separately or this is called after.
+    // Update user's lastActive timestamp so they aren't processed again today
+    user.lastActive = now;
+    await user.save();
     
     await stats.save();
     return stats;

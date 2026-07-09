@@ -1,6 +1,7 @@
 import User from "../../db/models/User.js";
 import UserStats from "../../db/models/userStatsSchema.js";
 import Message from "../../db/models/Messages.js";
+import UserConnection from "../../db/models/UserConnections.js";
 import { updateAppStreak } from "../../utils/streakHelper.js";
 
 export const getProfile = async (req, res) => {
@@ -42,6 +43,14 @@ export const getProfile = async (req, res) => {
         })
     );
 
+    const totalConnections = await UserConnection.countDocuments({
+        status: "accepted",
+        $or: [
+            { receiver: userId },
+            { requester: userId }
+        ]
+    });
+
     res.json({
       user,
       stats: {
@@ -51,7 +60,8 @@ export const getProfile = async (req, res) => {
         topChatStreaks: topStreaks,
         streakPoints: stats.streakPoints,
         totalActiveDays: stats.totalActiveDays || 0,
-        messagesToday
+        messagesToday,
+        connectionsCount: totalConnections
       }
     });
   } catch (error) {
