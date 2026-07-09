@@ -1,6 +1,6 @@
-import React from "react";
 import { createPortal } from "react-dom";
-import { ShieldAlert, Trash2, LogOut, LucideIcon } from "lucide-react";
+import { ShieldAlert, Trash2, LogOut } from "lucide-react";
+import type { LucideIcon } from "lucide-react";
 
 interface ConfirmationModalProps {
   isOpen: boolean;

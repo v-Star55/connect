@@ -1,7 +1,7 @@
 import { useState, useEffect } from "react";
 import z from "zod";
 import { useMutation, useQueryClient } from "@tanstack/react-query"
-import loginApi, { googleLoginApi } from "../api/api";
+import loginApi from "../api/api";
 import { toast } from "react-hot-toast";
 import { login } from "../slice/auth/authSlice";
 import { useDispatch } from "react-redux";

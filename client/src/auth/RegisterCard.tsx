@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { z } from "zod";
 import { useMutation } from "@tanstack/react-query";
 import { registerApi, verifyEmailApi } from "../api/api";
@@ -29,15 +29,26 @@ export const RegisterCard = ({ onBackToLogin, onSuccess }: RegisterCardProps) =>
     const [confirmPassword, setConfirmPassword] = useState("");
     const [showOTP, setShowOTP] = useState(false);
     const [otp, setOtp] = useState("");
+    const [resendCooldown, setResendCooldown] = useState(0);
 
     const navigate = useNavigate();
+
+    useEffect(() => {
+        let timer: any;
+        if (resendCooldown > 0) {
+            timer = setTimeout(() => {
+                setResendCooldown((prev) => prev - 1);
+            }, 1000);
+        }
+        return () => clearTimeout(timer);
+    }, [resendCooldown]);
 
     const registerMutation = useMutation({
         mutationFn: async () => {
             return await registerApi(fullName, email, username, password);
         },
         onSuccess: () => {
-            toast((t) => (
+            toast(() => (
                 <div className="flex flex-col items-center gap-2 p-1">
                     <div className="w-20 h-20 rounded-xl overflow-hidden flex items-center justify-center">
                         <video 
@@ -67,6 +78,7 @@ export const RegisterCard = ({ onBackToLogin, onSuccess }: RegisterCardProps) =>
                 }
             });
             setShowOTP(true);
+            setResendCooldown(30);
         },
         onError: (error: any) => {
             toast.error(error.response?.data?.message || "Registration failed. Please try again.");
@@ -245,19 +257,34 @@ export const RegisterCard = ({ onBackToLogin, onSuccess }: RegisterCardProps) =>
                         <div className="flex flex-col gap-3 pt-3">
                             <button 
                                 type="submit" 
-                                disabled={verifyMutation.isPending}
+                                disabled={verifyMutation.isPending || registerMutation.isPending}
                                 className="w-full bg-slate-950 hover:bg-slate-900 text-white font-bold py-4 rounded-2xl transition-all active:scale-[0.98] disabled:opacity-50 disabled:pointer-events-none shadow-lg shadow-slate-950/20 text-sm"
                             >
                                 {verifyMutation.isPending ? "Verifying..." : "Verify & Register"}
                             </button>
-                            <button 
-                                type="button" 
-                                onClick={() => registerMutation.mutate()} 
-                                disabled={registerMutation.isPending}
-                                className="w-full py-2.5 text-xs font-semibold bg-white/50 hover:bg-white border border-white/30 rounded-full transition-all text-slate-800 active:scale-95 shadow-sm"
-                            >
-                                {registerMutation.isPending ? "Resending..." : "Resend Code"}
-                            </button>
+                            <div className="flex gap-2">
+                                <button 
+                                    type="button" 
+                                    onClick={() => registerMutation.mutate()} 
+                                    disabled={registerMutation.isPending || resendCooldown > 0 || verifyMutation.isPending}
+                                    className="flex-1 py-2.5 text-xs font-semibold bg-white/50 hover:bg-white border border-white/30 rounded-full transition-all text-slate-800 active:scale-95 shadow-sm disabled:opacity-50 disabled:pointer-events-none"
+                                >
+                                    {registerMutation.isPending 
+                                        ? "Resending..." 
+                                        : resendCooldown > 0 
+                                            ? `Resend in ${resendCooldown}s` 
+                                            : "Resend Code"
+                                    }
+                                </button>
+                                <button 
+                                    type="button" 
+                                    onClick={() => setShowOTP(false)} 
+                                    disabled={verifyMutation.isPending || registerMutation.isPending}
+                                    className="flex-1 py-2.5 text-xs font-semibold bg-white/50 hover:bg-white border border-white/30 rounded-full transition-all text-slate-800 active:scale-95 shadow-sm"
+                                >
+                                    Change Details
+                                </button>
+                            </div>
                         </div>
                     </div>
                 )}

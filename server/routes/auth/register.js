@@ -9,22 +9,30 @@ const register = async (req, res) => {
   try {
     // 1. Check for email conflict
     const existingUser = await User.findOne({ email });
-    if (existingUser) {
-      if (existingUser.isVerified) {
-        return res.status(400).json({ message: "User already exists with this email" });
-      }
-      // Delete unverified user to allow retry
-      await User.deleteOne({ email });
+    if (existingUser && existingUser.isVerified) {
+      return res.status(400).json({ message: "User already exists with this email" });
     }
 
     // 2. Check for username conflict
     const existingUsername = await User.findOne({ username });
     if (existingUsername) {
-      if (existingUsername.isVerified) {
-        return res.status(400).json({ message: "Username is already taken" });
+      // If the username is owned by a different email
+      if (!existingUser || existingUsername.email !== existingUser.email) {
+        if (existingUsername.isVerified) {
+          return res.status(400).json({ message: "Username is already taken" });
+        }
+        // If unverified but not yet expired, we cannot delete it
+        if (existingUsername.OTPExpiry > Date.now()) {
+          return res.status(400).json({ message: "Username is already taken" });
+        }
+        // If unverified and expired, we delete it to free up the username
+        await User.deleteOne({ _id: existingUsername._id });
       }
-      // Delete unverified user to allow retry
-      await User.deleteOne({ username });
+    }
+
+    // Delete existing unverified user for the same email to allow retry
+    if (existingUser) {
+      await User.deleteOne({ email });
     }
 
     const OTP = Math.floor(100000 + Math.random() * 900000);  // Generate a random 6-digit OTP

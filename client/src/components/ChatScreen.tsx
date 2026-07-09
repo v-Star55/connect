@@ -4,7 +4,6 @@ import { useInfiniteQuery, useMutation, useQueryClient } from "@tanstack/react-q
 import { useSelector } from "react-redux";
 import { getMessagesApi, blockUserApi, unblockUserApi, clearChatApi, toggleMuteApi, toggleReadReceiptsApi, createChatApi, sendMessageApi, editMessageApi, deleteMessageApi } from "../api/api";
 import { Send, MoreVertical, Phone, Video, Smile, Paperclip, Loader2, ShieldAlert, Trash2, Eye, BellOff, Copy, Pencil, Check, X, ChevronRight } from "lucide-react";
-import { createPortal } from "react-dom";
 import { toast } from "react-hot-toast";
 import {
   ContextMenu,
