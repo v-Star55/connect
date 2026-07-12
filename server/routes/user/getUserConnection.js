@@ -12,7 +12,7 @@ export default async function getUserConnection(req,res){
             { receiver: req.user.id },
             { requester: req.user.id }
         ]
-    }).populate("receiver requester", "name username profilePicture")
+    }).populate("receiver requester", "name username profilePicture isOnline lastActive")
       .skip(skip)
       .limit(limit);
 

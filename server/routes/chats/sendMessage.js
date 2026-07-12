@@ -4,7 +4,7 @@ import ChatMember from "../../db/models/ChatMember.js";
 import User from "../../db/models/User.js";
 
 export const sendMessage = async (req, res) => {
-  const { chatId, content } = req.body;
+  const { chatId, content, media, mediaType } = req.body;
   const userId = req.user.id;
 
   try {
@@ -24,12 +24,12 @@ export const sendMessage = async (req, res) => {
           User.findById(userId).select("blockedUsers"),
           User.findById(otherUserId).select("blockedUsers")
         ]);
-
+ 
         const isBlockedByMe = currentUser.blockedUsers.some(id => id.toString() === otherUserId.toString());
         if (isBlockedByMe) {
           return res.status(403).json({ message: "You have blocked this user" });
         }
-
+ 
         const isBlockedByOther = targetUser.blockedUsers.some(id => id.toString() === userId.toString());
         if (isBlockedByOther) {
           return res.status(403).json({ message: "This user has blocked you" });
@@ -41,6 +41,8 @@ export const sendMessage = async (req, res) => {
       content,
       sender: userId,
       chatId,
+      media: media || "",
+      mediaType: mediaType || null,
     });
 
     const populatedMsg = await Message.findById(msg._id).populate("sender", "name profilePicture");

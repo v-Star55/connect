@@ -9,6 +9,9 @@ import sendMessage from "./sendMessage.js";
 import replyMessage from "./replyMessage.js";
 import editMessage from "./editMessage.js";
 import deleteMessage from "./deleteMessage.js";
+import uploadFile from "./uploadFile.js";
+import markChatAsRead from "./markChatAsRead.js";
+
 const router=Router()
 
 router.post("/",createChat)
@@ -16,12 +19,15 @@ router.post("/",createChat)
 router.get("/user",getChatsByUser)
 router.get("/messages/:chatId",getMessages)
 router.post("/sendMessage",sendMessage)
+router.post("/upload", uploadFile)
 router.post("/replyMessage",replyMessage)
 router.post("/clear", clearChat)
 router.put("/mute", toggleMute)
 router.put("/read-receipts", toggleReadReceipts)
+router.put("/read/:chatId", markChatAsRead)
 router.put("/edit/:messageId", editMessage)
 router.delete("/delete/:messageId", deleteMessage)
 // router.get("/:id",getChat)
 
 export default router
+

@@ -43,7 +43,7 @@ export const getChatsByUser = async (req, res) => {
 
         if (chat.type === "private") {
           const members = await ChatMember.find({ chat: chat._id })
-            .populate("user", "name username profilePicture blockedUsers");
+            .populate("user", "name username profilePicture blockedUsers isOnline lastActive");
 
           otherUser = members.find(
             (m) => m.user._id.toString() !== userId.toString()
@@ -93,6 +93,7 @@ export const getChatsByUser = async (req, res) => {
           type: chat.type,
           otherUserId: otherUser?._id,
           name: chat.type === "group" ? chat.name : otherUser?.name,
+          username: chat.type === "group" ? "" : otherUser?.username,
           profilePicture:
             chat.type === "group"
               ? chat.groupProfilePicture
@@ -102,7 +103,9 @@ export const getChatsByUser = async (req, res) => {
           unreadCount,
           vibes,
           isBlockedByMe,
-          isBlockedByOther
+          isBlockedByOther,
+          isOnline: chat.type === "group" ? false : (otherUser?.isOnline || false),
+          lastActive: chat.type === "group" ? null : otherUser?.lastActive
         };
       })
     );

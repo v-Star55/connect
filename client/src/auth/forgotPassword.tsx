@@ -9,10 +9,7 @@ const safeSchema = z.object({
   email: z.string().regex(/^[^\s@]+@[^\s@]+\.[^\s@]+$/, "Invalid Email Address"),
   password: z
     .string()
-    .regex(
-      /^(?=.*[A-Za-z])(?=.*\d)(?=.*[@$!%*#?&^()_\-+=])[A-Za-z\d@$!%*#?&^()_\-+=]{6,}$/,
-      "Password must be at least 6 characters and include a letter, a number, and a special character"
-    ),
+    .min(6, "Password must be at least 6 characters"),
 });
 
 const ForgotPassword = () => {
@@ -118,9 +115,6 @@ const ForgotPassword = () => {
 
     // Live Password Strength Checklist Booleans
     const hasMinLength = newPassword.length >= 6;
-    const hasLetter = /[A-Za-z]/.test(newPassword);
-    const hasNumber = /\d/.test(newPassword);
-    const hasSpecialChar = /[@$!%*#?&^()_\-+=]/.test(newPassword);
 
     return (
         <div className="min-h-screen w-full relative flex items-center justify-center lg:justify-between p-6 lg:p-16 xl:p-24 overflow-hidden font-sans select-none">
@@ -296,30 +290,6 @@ const ForgotPassword = () => {
                                             </span>
                                             <span className={hasMinLength ? "text-emerald-700" : "text-slate-500"}>
                                                 Must be at least 6 characters
-                                            </span>
-                                        </div>
-                                        <div className="flex items-center gap-2 text-xs font-semibold">
-                                            <span className={hasLetter ? "text-emerald-600" : "text-slate-400"}>
-                                                {hasLetter ? "✓" : "○"}
-                                            </span>
-                                            <span className={hasLetter ? "text-emerald-700" : "text-slate-500"}>
-                                                Must contain a letter
-                                            </span>
-                                        </div>
-                                        <div className="flex items-center gap-2 text-xs font-semibold">
-                                            <span className={hasNumber ? "text-emerald-600" : "text-slate-400"}>
-                                                {hasNumber ? "✓" : "○"}
-                                            </span>
-                                            <span className={hasNumber ? "text-emerald-700" : "text-slate-500"}>
-                                                Must contain a number
-                                            </span>
-                                        </div>
-                                        <div className="flex items-center gap-2 text-xs font-semibold">
-                                            <span className={hasSpecialChar ? "text-emerald-600" : "text-slate-400"}>
-                                                {hasSpecialChar ? "✓" : "○"}
-                                            </span>
-                                            <span className={hasSpecialChar ? "text-emerald-700" : "text-slate-500"}>
-                                                Must contain a special character
                                             </span>
                                         </div>
                                     </div>

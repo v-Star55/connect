@@ -651,3 +651,27 @@ button {
   left: 90%;
   animation: floatUpAlternate 20s infinite 7s;
 }
+
+/* Emoji Picker styling overrides to match theme */
+.EmojiPickerReact {
+  --epr-bg-color: rgba(24, 17, 46, 0.85) !important;
+  --epr-category-label-bg-color: rgba(24, 17, 46, 0.85) !important;
+  --epr-search-input-bg-color: rgba(255, 255, 255, 0.08) !important;
+  --epr-hover-bg-color: rgba(255, 255, 255, 0.05) !important;
+  --epr-focus-bg-color: rgba(255, 255, 255, 0.1) !important;
+  --epr-border-color: rgba(255, 255, 255, 0.1) !important;
+  --epr-highlight-color: #818cf8 !important;
+  --epr-picker-border-radius: 16px !important;
+  background-color: rgba(24, 17, 46, 0.85) !important;
+  border-color: rgba(255, 255, 255, 0.1) !important;
+}
+
+/* Force dark theme internal backgrounds */
+.EmojiPickerReact .epr-body,
+.EmojiPickerReact .epr-search,
+.EmojiPickerReact .epr-header,
+.EmojiPickerReact .epr-category-nav,
+.EmojiPickerReact .epr-footer,
+.EmojiPickerReact .epr-preview {
+  background-color: transparent !important;
+}

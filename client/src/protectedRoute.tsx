@@ -7,7 +7,8 @@ const ProtectedRoute = () => {
     queryKey: ["me"],
     queryFn: meApi,
     retry: false,          // don’t retry on 401
-    staleTime: 5 * 60 * 1000
+    staleTime: 5 * 60 * 1000,
+    refetchOnWindowFocus: false,
   });
 
   // Still checking auth → don’t redirect yet

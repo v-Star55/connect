@@ -67,9 +67,9 @@ const BottomBar = ({ onOpenRequests, isChatOpen = false }: BottomBarProps) => {
 
                 const buttonContent = (
                     <div className="relative flex items-center justify-center">
-                        {item.isProfile && user?.profilePicture ? (
+                        {item.isProfile ? (
                             <img 
-                                src={user.profilePicture} 
+                                src={user?.profilePicture || "/userFallback.png"} 
                                 alt="Profile" 
                                 className={`w-6 h-6 rounded-full object-cover border transition-all ${
                                     isActive ? "border-white scale-110" : "border-white/20 group-hover:border-white/50"

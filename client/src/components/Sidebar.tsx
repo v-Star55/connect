@@ -159,12 +159,11 @@ const Sidebar = ({ onOpenRequests }: { readonly onOpenRequests: () => void }) =>
                                                             ) : (
                                                                 <button onClick={item.onClick} />
                                                             )
-                                                        }
-                                                    >
+                                                        }>
                                                         <div className="flex items-center gap-3.5">
-                                                            {item.isProfile && user?.profilePicture ? (
+                                                            {item.isProfile ? (
                                                                 <img 
-                                                                    src={user.profilePicture} 
+                                                                    src={user?.profilePicture || "/userFallback.png"} 
                                                                     alt="Profile" 
                                                                     className={`w-5 h-5 rounded-full object-cover border ${
                                                                         isActive ? "border-white" : "border-white/20 group-hover:border-white/50"
@@ -173,7 +172,7 @@ const Sidebar = ({ onOpenRequests }: { readonly onOpenRequests: () => void }) =>
                                                             ) : (
                                                                 <Icon className="w-5 h-5 flex-shrink-0" />
                                                             )}
-                                                            <span>{item.label}</span>
+                                                            <span>{item.isProfile ? (user?.name || item.label) : item.label}</span>
                                                         </div>
 
                                                         {/* Requests Badge */}
@@ -217,33 +216,6 @@ const Sidebar = ({ onOpenRequests }: { readonly onOpenRequests: () => void }) =>
                                     </SidebarMenuButton>
                                 </SidebarMenuItem>
                             </SidebarMenu>
-                        </div>
-
-                        {/* Upgrade to Premium Promo Card */}
-                        <div className="mx-4 my-3 p-4 rounded-2xl bg-white/10 border border-white/15 backdrop-blur-md relative overflow-hidden group">
-                            {/* Subtle background glow */}
-                            <div className="absolute -right-6 -bottom-6 w-20 h-20 bg-indigo-500/10 rounded-full blur-xl group-hover:bg-indigo-500/20 transition-all duration-500" />
-                            
-                            {/* Promo Card Graphic */}
-                            <div className="flex items-center justify-center mb-3">
-                                <div className="p-3 bg-gradient-to-tr from-purple-500/10 to-indigo-500/10 rounded-2xl border border-white/10">
-                                    <Sparkles className="w-8 h-8 text-indigo-300 animate-pulse" />
-                                </div>
-                            </div>
-
-                            <div className="text-center space-y-1">
-                                <h3 className="text-xs font-extrabold text-white">Upgrade to Premium</h3>
-                                <p className="text-[10px] text-white/60 leading-normal max-w-[160px] mx-auto font-semibold">
-                                    Unlock exclusive features and cloud storage.
-                                </p>
-                            </div>
-
-                            <button 
-                                onClick={() => toast.success("Premium upgrade feature coming soon!")}
-                                className="w-full mt-3.5 py-2 px-4 rounded-xl bg-gradient-to-r from-violet-500 to-indigo-500 hover:from-violet-450 hover:to-indigo-450 text-white text-[11px] font-extrabold flex items-center justify-center gap-1.5 shadow-md shadow-indigo-500/20 hover:scale-[1.02] active:scale-[0.98] transition-all cursor-pointer"
-                            >
-                                Upgrade Now 👑
-                            </button>
                         </div>
 
                         {/* Logout Section */}

@@ -99,7 +99,7 @@ const ConnectionRequestsModal = ({ isOpen, onClose }: ConnectionRequestsModalPro
                         <div className="flex items-center gap-4 flex-1 min-w-0">
                             <div className="relative">
                                 <img
-                                    src={request.requester.profilePicture || "/default-avatar.png"}
+                                    src={request.requester.profilePicture || "/userFallback.png"}
                                     alt={request.requester.name}
                                     className="w-14 h-14 rounded-2xl object-cover border-2 border-white/10 group-hover:border-violet-500/30 transition-all"
                                 />

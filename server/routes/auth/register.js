@@ -7,6 +7,10 @@ const register = async (req, res) => {
   const { name, username, email, password } = req.body;
 
   try {
+    if (/\s/.test(username)) {
+      return res.status(400).json({ message: "Username cannot contain spaces" });
+    }
+
     // 1. Check for email conflict
     const existingUser = await User.findOne({ email });
     if (existingUser && existingUser.isVerified) {

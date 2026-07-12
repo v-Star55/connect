@@ -21,7 +21,6 @@ api.interceptors.response.use(
 
         try {
           await api.post("/auth/refresh", {}, { withCredentials: true });
-          toast.success("Access token refreshed");
           console.log("Access token refreshed");
           return api(originalConfig);
         } catch (_error) {
@@ -216,12 +215,22 @@ export async function createChatApi(otherUserId: string, type: string) {
 }
 
 
-export async function sendMessageApi(chatId: string, content: string) {
-    try {
-    const res = await api.post(`/chat/sendMessage`, { chatId, content });
+export async function sendMessageApi(chatId: string, content: string, media?: string, mediaType?: string | null) {
+  try {
+    const res = await api.post(`/chat/sendMessage`, { chatId, content, media, mediaType });
     return res.data;
   } catch (error) {
     console.error("Send message error:", error);
+    throw error;
+  }
+}
+
+export async function uploadFileApi(fileData: string) {
+  try {
+    const res = await api.post(`/chat/upload`, { fileData });
+    return res.data;
+  } catch (error) {
+    console.error("Upload file error:", error);
     throw error;
   }
 }
@@ -289,6 +298,17 @@ export async function toggleReadReceiptsApi(chatId: string, enabled: boolean) {
     throw error;
   }
 }
+
+export async function markChatAsReadApi(chatId: string) {
+  try {
+    const res = await api.put(`/chat/read/${chatId}`);
+    return res.data;
+  } catch (error) {
+    console.error("Mark chat as read error:", error);
+    throw error;
+  }
+}
+
 
 
 export async function getChatsByUserApi(page: number = 1) {

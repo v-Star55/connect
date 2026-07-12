@@ -2,8 +2,9 @@ import { useState, useEffect, useRef } from "react";
 import socket from "../socket";
 import { useInfiniteQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useSelector } from "react-redux";
-import { getMessagesApi, blockUserApi, unblockUserApi, clearChatApi, toggleMuteApi, toggleReadReceiptsApi, createChatApi, sendMessageApi, editMessageApi, deleteMessageApi } from "../api/api";
-import { Send, MoreVertical, Phone, Video, Smile, Paperclip, Loader2, ShieldAlert, Trash2, Eye, BellOff, Copy, Pencil, Check, X, ChevronRight } from "lucide-react";
+import EmojiPicker, { Theme } from "emoji-picker-react";
+import { getMessagesApi, blockUserApi, unblockUserApi, clearChatApi, toggleMuteApi, toggleReadReceiptsApi, createChatApi, sendMessageApi, editMessageApi, deleteMessageApi, uploadFileApi, markChatAsReadApi } from "../api/api";
+import { Send, MoreVertical, Phone, Video, Smile, Paperclip, Loader2, ShieldAlert, Trash2, Eye, BellOff, Copy, Pencil, Check, X, ChevronRight, Download, ArrowDown } from "lucide-react";
 import { toast } from "react-hot-toast";
 import {
   ContextMenu,
@@ -30,6 +31,9 @@ interface Message {
   createdAt: string;
   isDeleted?: boolean;
   isEdited?: boolean;
+  media?: string;
+  mediaType?: "image" | "video" | "audio" | "document" | null;
+  isRead?: boolean;
 }
 
 interface ChatScreenProps {
@@ -43,6 +47,7 @@ interface ChatScreenProps {
     isBlockedByMe?: boolean;
     isBlockedByOther?: boolean;
     vibes?: string[];
+    isOnline?: boolean;
   } | null;
   currentUserId: string;
   onStartChatClick?: () => void;
@@ -64,10 +69,28 @@ const ChatScreen = ({ activeChat, currentUserId, onStartChatClick, onBack }: Cha
   const [editingContent, setEditingContent] = useState("");
   const [deletingMessageId, setDeletingMessageId] = useState<string | null>(null);
   const [isBlockedByMe, setIsBlockedByMe] = useState(activeChat?.isBlockedByMe || false);
+  const [showScrollDownButton, setShowScrollDownButton] = useState(false);
   const [isBlockedByOther, setIsBlockedByOther] = useState(activeChat?.isBlockedByOther || false);
 
   const dropdownRef = useRef<HTMLDivElement>(null);
   const scrollRef = useRef<HTMLDivElement>(null);
+  const [showEmojiPicker, setShowEmojiPicker] = useState(false);
+  const emojiPickerRef = useRef<HTMLDivElement>(null);
+  const [attachment, setAttachment] = useState<{ url: string; type: "image" | "video" | "audio" | "document"; name: string } | null>(null);
+  const [isUploading, setIsUploading] = useState(false);
+  const fileInputRef = useRef<HTMLInputElement>(null);
+
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (emojiPickerRef.current && !emojiPickerRef.current.contains(event.target as Node)) {
+        setShowEmojiPicker(false);
+      }
+    };
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => {
+      document.removeEventListener("mousedown", handleClickOutside);
+    };
+  }, []);
 
   const muteMutation = useMutation({
     mutationFn: (muted: boolean) => toggleMuteApi(chatId!, muted),
@@ -210,6 +233,8 @@ const ChatScreen = ({ activeChat, currentUserId, onStartChatClick, onBack }: Cha
         };
       });
 
+      queryClient.invalidateQueries({ queryKey: ["my-chats"] });
+
       socket.emit("deleteMessage", {
         chatId: chatId,
         messageId: messageId
@@ -238,12 +263,81 @@ const ChatScreen = ({ activeChat, currentUserId, onStartChatClick, onBack }: Cha
     };
   }, [chatId]);
 
+  const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    // Check size limit (50MB)
+    const MAX_SIZE = 50 * 1024 * 1024;
+    if (file.size > MAX_SIZE) {
+      toast.error("File size exceeds the 50MB limit");
+      return;
+    }
+
+    // Determine type
+    let type: "image" | "video" | "audio" | "document" = "document";
+    if (file.type.startsWith("image/")) {
+      type = "image";
+    } else if (file.type.startsWith("video/")) {
+      type = "video";
+    } else if (file.type.startsWith("audio/")) {
+      type = "audio";
+    }
+
+    // Convert to base64
+    const reader = new FileReader();
+    reader.onload = async () => {
+      const base64Data = reader.result as string;
+      setIsUploading(true);
+      try {
+        const res = await uploadFileApi(base64Data);
+        setAttachment({
+          url: res.fileUrl,
+          type,
+          name: file.name,
+        });
+      } catch (err: any) {
+        console.error(err);
+        toast.error("Failed to upload attachment");
+      } finally {
+        setIsUploading(false);
+      }
+    };
+    reader.onerror = () => {
+      toast.error("Failed to read file");
+    };
+    reader.readAsDataURL(file);
+  };
+
+  const handleDownload = async (url: string, filename: string) => {
+    try {
+      const response = await fetch(url);
+      const blob = await response.blob();
+      const blobUrl = window.URL.createObjectURL(blob);
+      const link = document.createElement("a");
+      link.href = blobUrl;
+      link.download = filename;
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      window.URL.revokeObjectURL(blobUrl);
+    } catch (error) {
+      console.error("Failed to download attachment", error);
+      window.open(url, "_blank");
+    }
+  };
+
   const handleSendMessage = async () => {
-    console.log("Attempting to send message. chatId:", chatId, "messageText:", messageText);
-    if (!messageText.trim() || !chatId) return;
+    console.log("Attempting to send message. chatId:", chatId, "messageText:", messageText, "attachment:", attachment);
+    if ((!messageText.trim() && !attachment) || !chatId) return;
 
     try {
-      const res = await sendMessageApi(chatId, messageText);
+      const res = await sendMessageApi(
+        chatId,
+        messageText,
+        attachment?.url || "",
+        attachment?.type || null
+      );
       const savedMessage = res.message;
 
       // Update local UI immediately
@@ -263,13 +357,15 @@ const ChatScreen = ({ activeChat, currentUserId, onStartChatClick, onBack }: Cha
         return { ...oldData, pages: newPages };
       });
 
+      queryClient.invalidateQueries({ queryKey: ["my-chats"] });
+
       socket.emit("sendMessage", {
         chatId: chatId,
         message: savedMessage,
       });
 
       setMessageText("");
-      // Real-time update locally (optional if socket echoes back)
+      setAttachment(null);
     } catch (err) {
       console.error(err);
       toast.error("Failed to send message");
@@ -333,6 +429,7 @@ const ChatScreen = ({ activeChat, currentUserId, onStartChatClick, onBack }: Cha
             }))
           };
         });
+        queryClient.invalidateQueries({ queryKey: ["my-chats"] });
       }
     };
 
@@ -358,11 +455,33 @@ const ChatScreen = ({ activeChat, currentUserId, onStartChatClick, onBack }: Cha
       }
     };
 
+    const handleChatRead = (data: any) => {
+      console.log("Socket chatRead received:", data);
+      if (String(data.chatId) === String(chatId)) {
+        if (String(data.userId) !== String(currentUserId)) {
+          queryClient.setQueryData(["messages", chatId], (oldData: { pages: any[] } | undefined) => {
+            if (!oldData) return oldData;
+            return {
+              ...oldData,
+              pages: oldData.pages.map((page: any) => ({
+                ...page,
+                messages: page.messages.map((m: any) => {
+                  const isRead = new Date(m.createdAt) <= new Date(data.lastReadMessageTime);
+                  return isRead ? { ...m, isRead: true } : m;
+                })
+              }))
+            };
+          });
+        }
+      }
+    };
+
     socket.on("newMessage", handleNewMessage);
     socket.on("messageEdited", handleMessageEdited);
     socket.on("messageDeleted", handleMessageDeleted);
     socket.on("userBlocked", handleUserBlocked);
     socket.on("userUnblocked", handleUserUnblocked);
+    socket.on("chatRead", handleChatRead);
 
     return () => {
       socket.off("newMessage", handleNewMessage);
@@ -370,6 +489,7 @@ const ChatScreen = ({ activeChat, currentUserId, onStartChatClick, onBack }: Cha
       socket.off("messageDeleted", handleMessageDeleted);
       socket.off("userBlocked", handleUserBlocked);
       socket.off("userUnblocked", handleUserUnblocked);
+      socket.off("chatRead", handleChatRead);
     };
   }, [chatId, queryClient, currentUserId]);
 
@@ -390,11 +510,66 @@ const ChatScreen = ({ activeChat, currentUserId, onStartChatClick, onBack }: Cha
     getNextPageParam: (lastPage) => lastPage.next,
   });
 
+  // Declarative read receipts effect
+  const messagesList = data?.pages.flatMap(page => page.messages) || [];
+  const latestMessageId = messagesList[0]?._id;
+
+  useEffect(() => {
+    if (!chatId || !latestMessageId) return;
+
+    const latestMessage = messagesList[0];
+    const senderId = latestMessage?.sender?._id || latestMessage?.sender;
+    
+    // Only mark as read if the message is from someone else
+    if (latestMessage && senderId !== currentUserId) {
+      console.log(`[Declarative markAsRead] Triggered by latestMessageId: ${latestMessageId} from sender: ${senderId}`);
+      const markAsRead = async () => {
+        try {
+          await markChatAsReadApi(chatId);
+          queryClient.invalidateQueries({ queryKey: ["my-chats"] });
+        } catch (err) {
+          console.error("Failed to mark chat as read declaratively:", err);
+        }
+      };
+      markAsRead();
+    }
+  }, [chatId, latestMessageId, currentUserId, queryClient]);
+
+  // Scroll helpers
+  const scrollToBottom = () => {
+    if (scrollRef.current) {
+      scrollRef.current.scrollTo({
+        top: scrollRef.current.scrollHeight,
+        behavior: "smooth"
+      });
+      setShowScrollDownButton(false);
+    }
+  };
+
+  const handleScroll = () => {
+    if (!scrollRef.current) return;
+    const { scrollTop, scrollHeight, clientHeight } = scrollRef.current;
+    // Show button if user has scrolled up by more than 300px
+    const isScrolledUp = scrollHeight - scrollTop - clientHeight > 300;
+    setShowScrollDownButton(isScrolledUp);
+  };
+
+  // Smart scrolling on new data
   useEffect(() => {
     if (scrollRef.current) {
-      scrollRef.current.scrollTop = scrollRef.current.scrollHeight;
+      const { scrollTop, scrollHeight, clientHeight } = scrollRef.current;
+      const isScrolledUp = scrollHeight - scrollTop - clientHeight > 300;
+
+      // Extract the latest message
+      const latestMessage = messagesList[0];
+      const isLastMessageMine = latestMessage?.sender?._id === currentUserId || latestMessage?.sender === currentUserId;
+
+      // Only scroll to bottom automatically if the user is already at the bottom or if it's their own message
+      if (!isScrolledUp || isLastMessageMine) {
+        scrollRef.current.scrollTop = scrollRef.current.scrollHeight;
+      }
     }
-  }, [data]);
+  }, [data, currentUserId, messagesList]);
 
 
 
@@ -485,7 +660,7 @@ const ChatScreen = ({ activeChat, currentUserId, onStartChatClick, onBack }: Cha
   };
 
   return (
-    <div className="flex-1 flex flex-col h-full overflow-hidden bg-transparent text-white">
+    <div className="flex-1 flex flex-col h-full overflow-hidden bg-transparent text-white relative">
       {/* Header */}
       <div className="h-20 px-4 md:px-6 flex items-center justify-between border-b border-white/15 backdrop-blur-3xl relative z-40">
         <div className="flex items-center gap-2.5 md:gap-4">
@@ -505,7 +680,9 @@ const ChatScreen = ({ activeChat, currentUserId, onStartChatClick, onBack }: Cha
             <AvatarFallback>
               <img src="/userFallback.png" alt={activeChat.name} className="w-full h-full rounded-full object-cover" />
             </AvatarFallback>
-            <AvatarBadge className="bg-[#40c057] w-3.5 h-3.5 border-2 border-[#1e1c31]" />
+            {activeChat.isOnline && (
+              <AvatarBadge className="bg-[#40c057] w-3.5 h-3.5 border-2 border-[#1e1c31]" />
+            )}
           </Avatar>
           <div>
             <h3 className="font-bold text-lg text-white leading-tight">{activeChat.name}</h3>
@@ -544,19 +721,6 @@ const ChatScreen = ({ activeChat, currentUserId, onStartChatClick, onBack }: Cha
               <div className="absolute right-0 top-full mt-2 w-56 bg-[#180f2a]/60 backdrop-blur-xl border border-white/20 rounded-2xl shadow-2xl overflow-hidden animate-in fade-in zoom-in-95 duration-200 origin-top-right z-50">
                 <div className="p-2">
                   <button 
-                    onClick={() => { muteMutation.mutate(!isMuted); setIsOptionsOpen(false); }}
-                    className="w-full flex items-center justify-between px-4 py-3 text-sm text-white/90 hover:bg-white/10 rounded-xl transition-all cursor-pointer border border-transparent"
-                  >
-                    <div className="flex items-center gap-3">
-                      <BellOff className={`w-4 h-4 ${isMuted ? "text-orange-400" : "text-white/60"}`} />
-                      <span>Mute Notifications</span>
-                    </div>
-                    <div className={`w-8 h-4 rounded-full relative transition-colors duration-200 ${isMuted ? "bg-orange-500" : "bg-white/20"}`}>
-                      <div className={`absolute top-0.5 w-3 h-3 bg-white rounded-full transition-all duration-200 ${isMuted ? "right-0.5" : "left-0.5"}`}></div>
-                    </div>
-                  </button>
-                  
-                  <button 
                     onClick={() => { readReceiptsMutation.mutate(!readReceipts); setIsOptionsOpen(false); }}
                     className="w-full flex items-center justify-between px-4 py-3 text-sm text-white/90 hover:bg-white/10 rounded-xl transition-all cursor-pointer border border-transparent"
                   >
@@ -571,14 +735,6 @@ const ChatScreen = ({ activeChat, currentUserId, onStartChatClick, onBack }: Cha
                 </div>
 
                 <div className="p-2 border-t border-white/10">
-                  <button 
-                    onClick={() => { setIsOptionsOpen(false); setShowClearConfirm(true); }}
-                    className="w-full flex items-center gap-3 px-4 py-3 text-sm text-white/90 hover:bg-white/10 rounded-xl transition-all cursor-pointer border border-transparent"
-                  >
-                    <Trash2 className="w-4 h-4 text-white/60" />
-                    <span>Clear Chat</span>
-                  </button>
-                  
                   <button 
                     onClick={() => { setIsOptionsOpen(false); if (isBlockedByMe) handleUnblockUser(); else setShowBlockConfirm(true); }}
                     className={`w-full flex items-center gap-3 px-4 py-3 text-sm rounded-xl transition-all cursor-pointer border border-transparent ${
@@ -621,6 +777,7 @@ const ChatScreen = ({ activeChat, currentUserId, onStartChatClick, onBack }: Cha
       {/* Messages area */}
       <div 
         ref={scrollRef}
+        onScroll={handleScroll}
         className="flex-1 overflow-y-auto p-6 space-y-6 scrollbar-hide bg-transparent"
       >
         {isLoading ? (
@@ -701,13 +858,44 @@ const ChatScreen = ({ activeChat, currentUserId, onStartChatClick, onBack }: Cha
                                   : "bg-white backdrop-blur-md text-black rounded-tl-none shadow-md border border-white/15"
                               }`}
                             >
-                              {msg.content}
+                              {msg.media && (
+                                <div className="mb-2 max-w-[280px] sm:max-w-xs md:max-w-md rounded-xl overflow-hidden border border-white/10 shadow-md relative group/media">
+                                  {msg.mediaType === "image" && (
+                                    <img src={msg.media} alt="Attachment" className="w-full object-cover max-h-60" />
+                                  )}
+                                  {msg.mediaType === "video" && (
+                                    <video src={msg.media} controls className="w-full max-h-60" />
+                                  )}
+                                  {msg.mediaType === "audio" && (
+                                    <audio src={msg.media} controls className="w-full" />
+                                  )}
+                                  {msg.mediaType === "document" && (
+                                    <a 
+                                      href={msg.media} 
+                                      target="_blank" 
+                                      rel="noopener noreferrer" 
+                                      className="flex items-center gap-2 p-3 bg-black/20 hover:bg-black/35 text-white transition-all text-xs font-semibold"
+                                    >
+                                      <span>📄 Download File</span>
+                                    </a>
+                                  )}
+                                  <button
+                                    type="button"
+                                    onClick={() => handleDownload(msg.media!, `attachment-${msg._id}`)}
+                                    className="absolute top-2 right-2 p-2 rounded-lg bg-black/60 hover:bg-black/80 text-white/80 hover:text-white transition-all opacity-0 group-hover/media:opacity-100 shadow-md cursor-pointer flex items-center justify-center z-10"
+                                    title="Download attachment"
+                                  >
+                                    <Download className="w-4 h-4" />
+                                  </button>
+                                </div>
+                              )}
+                              {msg.content && <p className="whitespace-pre-wrap">{msg.content}</p>}
                             </div>
                           </ContextMenuTrigger>
                           <ContextMenuContent className="w-36 bg-[#180f2a]/60 backdrop-blur-xl border border-white/20 rounded-xl shadow-2xl p-1 z-50 animate-in fade-in zoom-in-95 duration-100">
                             <ContextMenuItem 
                               onClick={() => {
-                                navigator.clipboard.writeText(msg.content);
+                                navigator.clipboard.writeText(msg.content || msg.media || "");
                                 toast.success("Copied to clipboard");
                               }}
                                className="flex items-center gap-2 px-3 py-2 text-xs text-white/80 hover:text-white/20 hover:bg-white/10 transition-all cursor-pointer rounded-lg outline-none"
@@ -754,7 +942,7 @@ const ChatScreen = ({ activeChat, currentUserId, onStartChatClick, onBack }: Cha
                         {new Date(msg.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
                       </span>
                       {isMine && (
-                          <span className="text-violet-300 font-semibold text-[10px] ml-0.5">✓✓</span>
+                          <span className={`${msg.isRead ? "text-sky-400" : "text-violet-300"} font-semibold text-[10px] ml-0.5`}>✓✓</span>
                       )}
                     </div>
                   </div>
@@ -765,6 +953,18 @@ const ChatScreen = ({ activeChat, currentUserId, onStartChatClick, onBack }: Cha
           </>
         )}
       </div>
+
+      {/* Down arrow to scroll to latest messages */}
+      {showScrollDownButton && (
+        <button 
+          onClick={scrollToBottom}
+          className="absolute bottom-28 left-1/2 -translate-x-1/2 z-30 p-2.5 bg-gradient-to-r from-violet-600 to-indigo-600 hover:from-violet-500 hover:to-indigo-500 text-white rounded-full shadow-lg border border-white/20 hover:scale-110 active:scale-95 transition-all duration-300 cursor-pointer flex items-center justify-center animate-bounce"
+          style={{ animationDuration: "2s" }}
+          title="Scroll to latest"
+        >
+          <ArrowDown className="w-5 h-5 text-white" />
+        </button>
+      )}
 
       {/* Message Input or Blocked UI */}
       {(() => {
@@ -800,15 +1000,83 @@ const ChatScreen = ({ activeChat, currentUserId, onStartChatClick, onBack }: Cha
 
         return (
           <div className="p-5 bg-white/5 border-t border-white/10 shrink-0">
+            {isUploading && (
+              <div className="mb-4 p-3 bg-white/10 rounded-2xl border border-white/15 flex items-center gap-3 animate-in fade-in slide-in-from-bottom-2 duration-300">
+                <Loader2 className="w-5 h-5 animate-spin text-violet-400 flex-shrink-0" />
+                <span className="text-sm font-semibold text-white/70">Uploading attachment...</span>
+              </div>
+            )}
+            {attachment && (
+              <div className="mb-4 p-3 bg-white/10 rounded-2xl border border-white/15 flex items-center justify-between gap-4 animate-in fade-in slide-in-from-bottom-2 duration-300">
+                <div className="flex items-center gap-3 min-w-0">
+                  {attachment.type === "image" && (
+                    <img src={attachment.url} alt="Upload preview" className="w-12 h-12 rounded-lg object-cover border border-white/10 flex-shrink-0" />
+                  )}
+                  {attachment.type === "video" && (
+                    <div className="w-12 h-12 rounded-lg bg-black/40 border border-white/10 flex items-center justify-center flex-shrink-0">
+                      <Video className="w-5 h-5 text-indigo-400" />
+                    </div>
+                  )}
+                  {attachment.type === "audio" && (
+                    <div className="w-12 h-12 rounded-lg bg-black/40 border border-white/10 flex items-center justify-center flex-shrink-0">
+                      <Phone className="w-5 h-5 text-emerald-400" />
+                    </div>
+                  )}
+                  {attachment.type === "document" && (
+                    <div className="w-12 h-12 rounded-lg bg-black/40 border border-white/10 flex items-center justify-center flex-shrink-0">
+                      <Paperclip className="w-5 h-5 text-amber-400" />
+                    </div>
+                  )}
+                  <div className="min-w-0">
+                    <p className="text-xs text-white/50 font-semibold">Attachment uploaded</p>
+                    <p className="text-sm font-bold text-white truncate max-w-[200px] sm:max-w-xs">{attachment.name}</p>
+                  </div>
+                </div>
+                <button 
+                  type="button" 
+                  onClick={() => setAttachment(null)}
+                  className="p-1.5 rounded-lg hover:bg-white/10 text-white/60 hover:text-white transition-all cursor-pointer flex-shrink-0"
+                >
+                  <X className="w-5 h-5" />
+                </button>
+              </div>
+            )}
             <form 
               className="flex items-center gap-4 bg-white/10 border border-white/15 p-2.5 px-4.5 rounded-[22px] focus-within:border-white/25 focus-within:bg-white/15 transition-all"
               onSubmit={(e) => { e.preventDefault(); handleSendMessage(); }}
             >
-              <button type="button" className="text-white/60 hover:text-white transition-colors cursor-pointer">
-                <Smile className="w-5 h-5" />
-              </button>
-              <button type="button" className="text-white/60 hover:text-white transition-colors cursor-pointer">
-                <Paperclip className="w-5 h-5" />
+              <input 
+                type="file" 
+                ref={fileInputRef} 
+                onChange={handleFileChange} 
+                className="hidden" 
+              />
+              <div className="relative flex items-center" ref={emojiPickerRef}>
+                <button 
+                  type="button" 
+                  onClick={() => setShowEmojiPicker(!showEmojiPicker)}
+                  className="text-white/60 hover:text-white transition-colors cursor-pointer"
+                >
+                  <Smile className="w-5 h-5" />
+                </button>
+                {showEmojiPicker && (
+                  <div className="absolute bottom-12 left-0 z-50 shadow-2xl rounded-2xl border border-white/10 overflow-hidden backdrop-blur-3xl">
+                    <EmojiPicker 
+                      theme={Theme.DARK}
+                      onEmojiClick={(emojiData) => {
+                        setMessageText((prev) => prev + emojiData.emoji);
+                      }}
+                    />
+                  </div>
+                )}
+              </div>
+              <button 
+                type="button" 
+                onClick={() => fileInputRef.current?.click()}
+                disabled={isUploading}
+                className="text-white/60 hover:text-white transition-colors cursor-pointer disabled:opacity-30 disabled:cursor-not-allowed"
+              >
+                {isUploading ? <Loader2 className="w-5 h-5 animate-spin text-violet-400" /> : <Paperclip className="w-5 h-5" />}
               </button>
               <textarea
                 rows={1}
@@ -829,7 +1097,7 @@ const ChatScreen = ({ activeChat, currentUserId, onStartChatClick, onBack }: Cha
               />
               <button 
                 type="submit" 
-                disabled={!messageText.trim()}
+                disabled={(!messageText.trim() && !attachment) || isUploading}
                 className="w-10 h-10 rounded-full bg-gradient-to-r from-violet-500 to-indigo-500 hover:from-violet-600 hover:to-indigo-600 text-white disabled:opacity-30 disabled:cursor-not-allowed flex items-center justify-center transition-all flex-shrink-0 cursor-pointer shadow-sm"
               >
                 <Send className="w-4.5 h-4.5" />
