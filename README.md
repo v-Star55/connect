@@ -21,15 +21,36 @@ Connect is a modern, feature-rich, full-stack real-time social and chat platform
   - Search for users in real-time.
   - Send, accept, reject, or cancel connection requests.
   - Modal-based connection tracking for pending requests.
+  - **Remove Connection**: Safely disconnect from a contact, which immediately soft-deletes the private chat membership, blocks further messages, and uses WebSockets to auto-redirect both users back to the chat list.
 
 - **👤 Dynamic User Profiles**
   - Custom profiles detailing user info.
   - Clean and responsive dashboard interfaces.
 
+- **🎮 Interactive Sparks (Games)**
+  - **Coin Flip**: A real-time 3D CSS animated game enabling users to predict, flip, and synchronize results instantly using Socket.io.
+
+- **📋 Shared Bucket List**
+  - Shared list items, checkmarks, deletions, and real-time Socket.io updates.
+  - Colored category badges representing timeframes (Normal, Weekly, Monthly, Yearly, and Custom "Before Month").
+  - Dynamic monthly date dropdown helper generating targets for the next 12 months.
+  - Custom visual **shadcn Select** widgets for cleaner picker styling.
+  - Collapsible **"Add Goal" input form** with a smooth Material-designed accordion transition.
+  - Progress tracker circle visualizing completion percentage dynamically.
+  - Automated overdue/expired tracking indicators.
+
+- **⚡ Database Performance & Indexing**
+  - Optimized database query performance via targeted schema index definitions:
+    - `ChatMember`: Compound index on `{ user: 1, isDeleted: 1 }`.
+    - `Message`: Compound index on `{ chatId: 1, createdAt: -1 }`.
+    - `UserConnection`: Compound indexes on requester/receiver combinations.
+    - `BucketList`: Index on `{ chatId: 1 }`.
+
 - **🎨 Modern User Interface**
   - Built with **React 19** and **Vite** for blazing fast performance.
   - Styled with **TailwindCSS v4.0** offering modern aesthetics and absolute responsiveness.
   - Beautiful notifications and toast feedback using **react-hot-toast**.
+  - Premium dark gradients, animations, and custom scroll bars.
 
 ---
 
