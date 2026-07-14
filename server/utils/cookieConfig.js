@@ -4,7 +4,7 @@ export const getCookieOptions = (maxAge) => {
   const options = {
     httpOnly: true,
     secure: isProd,
-    sameSite: isProd ? "none" : "lax",
+    sameSite: "lax",
   };
   if (maxAge !== undefined) {
     options.maxAge = maxAge;
