@@ -13,16 +13,16 @@ const Layout = () => {
     return (
         <SidebarProvider className="relative !h-screen !min-h-0 overflow-hidden select-none bg-transparent">
             {/* Background Video */}
-            <video 
-                autoPlay 
-                loop 
-                muted 
-                playsInline 
+            <video
+                autoPlay
+                loop
+                muted
+                playsInline
                 className="absolute inset-0 w-full h-full object-cover z-0 pointer-events-none"
             >
                 <source src="/rain.mp4" type="video/mp4" />
             </video>
-            
+
             {/* Background Video Overlay */}
             {/* <div className="absolute inset-0 bg-black/5 z-0 pointer-events-none" /> */}
 
@@ -35,15 +35,15 @@ const Layout = () => {
             </main>
 
             {/* Bottom Navigation for mobile/tablets */}
-            <BottomBar 
-                onOpenRequests={() => setIsRequestsModalOpen(true)} 
+            <BottomBar
+                onOpenRequests={() => setIsRequestsModalOpen(true)}
                 isChatOpen={isChatOpen}
             />
 
             {/* Connection Requests Modal hoisted to Layout */}
-            <ConnectionRequestsModal 
-                isOpen={isRequestsModalOpen} 
-                onClose={() => setIsRequestsModalOpen(false)} 
+            <ConnectionRequestsModal
+                isOpen={isRequestsModalOpen}
+                onClose={() => setIsRequestsModalOpen(false)}
             />
         </SidebarProvider>
     );

@@ -6,6 +6,7 @@ const userStatsSchema = new mongoose.Schema({
   appStreak: { type: Number, default: 0 },
   longestStreak: { type: Number, default: 0 },
   totalActiveDays: { type: Number, default: 0 },
+  lastActiveStreakDate: { type: Date, default: null },
 
   chatStreaks: { type: Map, of: Number, default: new Map() }, // userId -> days
   chatStreakDates: { type: Map, of: Date, default: new Map() }, // userId -> last interaction date

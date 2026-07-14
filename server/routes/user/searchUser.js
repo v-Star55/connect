@@ -12,9 +12,7 @@ export const searchUser = async (req, res) => {
     const limit = Number.parseInt(req.query.limit) || 10;
     const skip = (page - 1) * limit;
 
-    if ((!q || q.trim() === "") && (!vibe || vibe === "All")) {
-      return res.json({ users: [], next: null });
-    }
+
 
     const regex = q && q.trim() !== "" ? new RegExp(q.trim(), "i") : null;
 

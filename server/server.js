@@ -9,11 +9,11 @@ import User from "./db/models/User.js";
 
 const port = process.env.PORT || 4000;
 
-const server=createServer(app);
+const server = createServer(app);
 
 console.log("CLIENT_URL from env:", process.env.CLIENT_URL);
 // Force restart
-const io=new Server(server, {
+const io = new Server(server, {
   cors: {
     origin: [process.env.CLIENT_URL, "http://localhost:5173"].filter(Boolean),
     credentials: true,
@@ -37,7 +37,7 @@ const parseCookies = (cookieStr) => {
 // Track online users: Map of userId -> Set of socketId
 const onlineUsers = new Map();
 
-const dbConnection = async() => {
+const dbConnection = async () => {
   await connectDB();
   try {
     await User.updateMany({}, { isOnline: false });
@@ -108,6 +108,37 @@ io.on("connection", async (socket) => {
       const targetRoom = String(data.chatId);
       console.log(`Socket [${socket.id}] broadcasting edit to room [${targetRoom}]`);
       io.to(targetRoom).emit("messageEdited", data);
+    });
+
+    socket.on("coWatchSyncResponse", (data) => {
+      const targetRoom = String(data.chatId);
+      console.log(`Socket [${socket.id}] broadcasting coWatchSyncResponse to room [${targetRoom}]`);
+      socket.to(targetRoom).emit("coWatchSyncResponded", data);
+    });
+
+    // Connection Sparks events
+    socket.on("sparksEvent", (data) => {
+      const targetRoom = String(data.chatId);
+      console.log(`Socket [${socket.id}] broadcasting sparksEvent to room [${targetRoom}]`, data);
+      socket.to(targetRoom).emit("sparksStateUpdate", data);
+    });
+
+    socket.on("bucketListUpdate", (data) => {
+      const targetRoom = String(data.chatId);
+      console.log(`Socket [${socket.id}] broadcasting bucketListUpdate to room [${targetRoom}]`, data);
+      socket.to(targetRoom).emit("bucketListUpdated", data);
+    });
+
+    socket.on("sparksSyncRequest", (data) => {
+      const targetRoom = String(data.chatId);
+      console.log(`Socket [${socket.id}] broadcasting sparksSyncRequest to room [${targetRoom}]`);
+      socket.to(targetRoom).emit("sparksSyncRequested", data);
+    });
+
+    socket.on("sparksSyncResponse", (data) => {
+      const targetRoom = String(data.chatId);
+      console.log(`Socket [${socket.id}] broadcasting sparksSyncResponse to room [${targetRoom}]`);
+      socket.to(targetRoom).emit("sparksSyncResponded", data);
     });
 
     socket.on("deleteMessage", (data) => {

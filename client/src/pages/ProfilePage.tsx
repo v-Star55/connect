@@ -8,6 +8,13 @@ import {
 import { useDispatch } from "react-redux";
 import { login } from "../slice/auth/authSlice";
 import toast from "react-hot-toast";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "../components/ui/select";
 
 const VIBES = [
   "😎 Chill", "🌿 Peaceful", "🌙 Low-Key", "🧘 Zen", "☕ Cozy", "🔥 Hype",
@@ -80,6 +87,22 @@ const FloatingIslandSVG = () => (
   </svg>
 );
 
+const PROMPT_OPTIONS = [
+  { key: "birthday", label: "Birthday", emoji: "🎂", placeholder: "e.g. October 14" },
+  { key: "zodiac", label: "Zodiac Sign (Rashi)", emoji: "🌟", placeholder: "Choose Zodiac..." },
+  { key: "fav_song", label: "Favorite Song", emoji: "🎵", placeholder: "e.g. Yellow by Coldplay" },
+  { key: "fav_movie", label: "Favorite Movie", emoji: "🎬", placeholder: "e.g. Inception" },
+  { key: "fav_actor", label: "Favorite Actor", emoji: "🎭", placeholder: "e.g. Leonardo DiCaprio" },
+  { key: "fav_artist", label: "Favorite Artist", emoji: "🎨", placeholder: "e.g. Taylor Swift" },
+  { key: "fav_book", label: "Favorite Book", emoji: "📚", placeholder: "e.g. Harry Potter" },
+  { key: "fav_food", label: "Favorite Food", emoji: "🍕", placeholder: "e.g. Pizza" },
+  { key: "fav_game", label: "Favorite Game", emoji: "🎮", placeholder: "e.g. Minecraft" },
+  { key: "fav_sport", label: "Favorite Sport", emoji: "⚽", placeholder: "e.g. Football" },
+  { key: "fav_show", label: "Favorite Show", emoji: "📺", placeholder: "e.g. Breaking Bad" },
+  { key: "fav_band", label: "Favorite Band", emoji: "🎸", placeholder: "e.g. Queen" },
+  { key: "other", label: "Other (Write Your Own)", emoji: "✨", placeholder: "e.g. Favorite Color" },
+];
+
 const ProfilePage = () => {
     const queryClient = useQueryClient();
     const dispatch = useDispatch();
@@ -87,6 +110,7 @@ const ProfilePage = () => {
     const [isEditing, setIsEditing] = useState(false);
     const [editName, setEditName] = useState("");
     const [editBio, setEditBio] = useState("");
+    const [editAboutMe, setEditAboutMe] = useState<{ key: string; label: string; value: string }[]>([]);
     
     // Avatar selector state
     const [isAvatarPickerOpen, setIsAvatarPickerOpen] = useState(false);
@@ -107,15 +131,17 @@ const ProfilePage = () => {
             setEditName(data.user.name || "");
             setEditBio(data.user.bio || "");
             setSelectedAvatar(data.user.profilePicture || "");
+            setEditAboutMe(data.user.aboutMe || []);
         }
     }, [data]);
 
     const updateProfileMutation = useMutation({
-        mutationFn: async (vars: { name?: string; bio?: string; profilePicture?: string } = {}) => {
+        mutationFn: async (vars: { name?: string; bio?: string; profilePicture?: string; aboutMe?: any } = {}) => {
             const nameToUpdate = vars.name !== undefined ? vars.name : editName;
             const bioToUpdate = vars.bio !== undefined ? vars.bio : editBio;
             const pictureToUpdate = vars.profilePicture !== undefined ? vars.profilePicture : selectedAvatar;
-            return updateProfileApi(nameToUpdate, bioToUpdate, pictureToUpdate);
+            const aboutMeToUpdate = vars.aboutMe !== undefined ? vars.aboutMe : editAboutMe;
+            return updateProfileApi(nameToUpdate, bioToUpdate, pictureToUpdate, aboutMeToUpdate);
         },
         onSuccess: (updatedUser) => {
             queryClient.invalidateQueries({ queryKey: ["profile"] });
@@ -309,6 +335,185 @@ const ProfilePage = () => {
                             </button>
                         </div>
                     </div>
+
+                    {/* About Me Prompts (Edit Mode) */}
+                    {isEditing && (
+                        <div className="bg-white/5 border border-white/10 rounded-3xl p-6 space-y-4 shrink-0">
+                            <div className="flex items-center justify-between">
+                                <div className="space-y-1">
+                                    <h3 className="text-sm font-black text-white uppercase tracking-wider flex items-center gap-2">
+                                        <Sparkles className="w-4 h-4 text-violet-400" /> Highlights & Q&A
+                                    </h3>
+                                    <p className="text-xs text-white/55 font-medium">Add facts about yourself to show on your profile</p>
+                                </div>
+                                <button
+                                    type="button"
+                                    onClick={() => {
+                                        const firstOpt = PROMPT_OPTIONS[0];
+                                        setEditAboutMe(prev => [...prev, { 
+                                            key: firstOpt.key, 
+                                            label: firstOpt.key === "other" ? "" : firstOpt.label, 
+                                            value: firstOpt.key === "zodiac" ? "Aries" : "" 
+                                        }]);
+                                    }}
+                                    className="bg-violet-500/20 hover:bg-violet-500/30 text-violet-300 border border-violet-500/30 rounded-xl text-xs font-bold px-3 py-1.5 transition-all cursor-pointer active:scale-95 flex items-center gap-1"
+                                >
+                                    <span>+ Add Fact</span>
+                                </button>
+                            </div>
+
+                            <div className="space-y-3">
+                                {editAboutMe.map((item, idx) => {
+                                    const opt = PROMPT_OPTIONS.find(o => o.key === item.key) || PROMPT_OPTIONS[0];
+                                    
+                                    return (
+                                        <div key={idx} className="flex items-center gap-3 bg-white/5 border border-white/10 p-3 rounded-2xl">
+                                            {/* Selector for key */}
+                                            <Select
+                                                value={item.key}
+                                                onValueChange={(newKey) => {
+                                                    if (!newKey) return;
+                                                    const selectedOpt = PROMPT_OPTIONS.find(o => o.key === newKey);
+                                                    if (selectedOpt) {
+                                                        const updated = [...editAboutMe];
+                                                        updated[idx] = { 
+                                                            key: selectedOpt.key, 
+                                                            label: selectedOpt.key === "other" ? "" : selectedOpt.label, 
+                                                            value: selectedOpt.key === "zodiac" ? "Aries" : "" 
+                                                        };
+                                                        setEditAboutMe(updated);
+                                                    }
+                                                }}
+                                            >
+                                                <SelectTrigger className="w-44 bg-white/5 border border-white/10 rounded-xl text-xs text-white h-10 hover:bg-white/10 focus:ring-0 focus:border-white/20 select-none">
+                                                    <SelectValue />
+                                                </SelectTrigger>
+                                                <SelectContent className="bg-[#18112e]/95 border border-white/15 rounded-xl text-white p-1 z-[9999] shadow-2xl backdrop-blur-2xl max-h-60 overflow-y-auto">
+                                                    {PROMPT_OPTIONS.map(opt => (
+                                                        <SelectItem 
+                                                            key={opt.key} 
+                                                            value={opt.key}
+                                                            className="text-xs hover:bg-white/10 cursor-pointer p-2 rounded-lg text-white/80 hover:text-white flex items-center gap-2"
+                                                        >
+                                                            {opt.emoji} {opt.label}
+                                                        </SelectItem>
+                                                    ))}
+                                                </SelectContent>
+                                            </Select>
+
+                                            {/* Custom Title Input for "Other" category */}
+                                            {item.key === "other" && (
+                                                <input
+                                                    type="text"
+                                                    placeholder="Title (e.g. Fav Food)"
+                                                    value={item.label}
+                                                    onChange={(e) => {
+                                                        const updated = [...editAboutMe];
+                                                        updated[idx].label = e.target.value;
+                                                        setEditAboutMe(updated);
+                                                    }}
+                                                    className="w-40 bg-white/5 border border-white/10 rounded-xl px-3 py-2 text-xs text-white focus:outline-none focus:border-white/20 h-10 shrink-0"
+                                                />
+                                            )}
+
+                                            {/* Value Input */}
+                                            {item.key === "zodiac" ? (
+                                                <Select
+                                                    value={item.value}
+                                                    onValueChange={(val) => {
+                                                        const updated = [...editAboutMe];
+                                                        updated[idx].value = val || "";
+                                                        setEditAboutMe(updated);
+                                                    }}
+                                                >
+                                                    <SelectTrigger className="flex-1 bg-white/5 border border-white/10 rounded-xl text-xs text-white h-10 hover:bg-white/10 focus:ring-0 focus:border-white/20 select-none">
+                                                        <SelectValue placeholder="Select Zodiac..." />
+                                                    </SelectTrigger>
+                                                    <SelectContent className="bg-[#18112e]/95 border border-white/15 rounded-xl text-white p-1 z-[9999] shadow-2xl backdrop-blur-2xl max-h-60 overflow-y-auto">
+                                                        {[
+                                                            { name: "Aries", details: "Aries (Mesha)" },
+                                                            { name: "Taurus", details: "Taurus (Vrishabha)" },
+                                                            { name: "Gemini", details: "Gemini (Mithuna)" },
+                                                            { name: "Cancer", details: "Cancer (Karka)" },
+                                                            { name: "Leo", details: "Leo (Simha)" },
+                                                            { name: "Virgo", details: "Virgo (Kanya)" },
+                                                            { name: "Libra", details: "Libra (Tula)" },
+                                                            { name: "Scorpio", details: "Scorpio (Vrishchika)" },
+                                                            { name: "Sagittarius", details: "Sagittarius (Dhanu)" },
+                                                            { name: "Capricorn", details: "Capricorn (Makara)" },
+                                                            { name: "Aquarius", details: "Aquarius (Kumbha)" },
+                                                            { name: "Pisces", details: "Pisces (Meena)" },
+                                                        ].map(sign => (
+                                                            <SelectItem 
+                                                                key={sign.name} 
+                                                                value={sign.name}
+                                                                className="text-xs hover:bg-white/10 cursor-pointer p-2 rounded-lg text-white/80 hover:text-white flex items-center gap-2"
+                                                            >
+                                                                {sign.details}
+                                                            </SelectItem>
+                                                        ))}
+                                                    </SelectContent>
+                                                </Select>
+                                            ) : (
+                                                <input
+                                                    type="text"
+                                                    placeholder={opt.placeholder}
+                                                    value={item.value}
+                                                    onChange={(e) => {
+                                                        const updated = [...editAboutMe];
+                                                        updated[idx].value = e.target.value;
+                                                        setEditAboutMe(updated);
+                                                    }}
+                                                    className="flex-1 bg-white/5 border border-white/10 rounded-xl px-3.5 py-2 text-xs text-white focus:outline-none focus:border-white/20 h-10"
+                                                />
+                                            )}
+
+                                            {/* Delete Button */}
+                                            <button
+                                                type="button"
+                                                onClick={() => {
+                                                    setEditAboutMe(prev => prev.filter((_, i) => i !== idx));
+                                                }}
+                                                className="p-2.5 bg-red-500/10 hover:bg-red-500/20 border border-red-500/25 rounded-xl text-red-400 transition-colors cursor-pointer"
+                                            >
+                                                <X className="w-4 h-4" />
+                                            </button>
+                                        </div>
+                                    );
+                                })}
+
+                                {editAboutMe.length === 0 && (
+                                    <div className="text-center py-6 border border-dashed border-white/15 rounded-2xl text-white/40 text-xs font-semibold">
+                                        No custom facts added yet. Click "+ Add Fact" to start!
+                                    </div>
+                                )}
+                            </div>
+                        </div>
+                    )}
+
+                    {/* Highlights / Fun Facts (Display Mode) */}
+                    {(!isEditing && user?.aboutMe && user.aboutMe.length > 0) && (
+                        <div className="bg-white/5 border border-white/10 backdrop-blur-md rounded-3xl p-6 space-y-4 shrink-0">
+                            <h3 className="text-sm font-black text-white uppercase tracking-wider flex items-center gap-2">
+                                <Sparkles className="w-4 h-4 text-indigo-400" /> Highlights & Q&A
+                            </h3>
+                            <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
+                                {user.aboutMe.map((item: any, idx: number) => {
+                                    const opt = PROMPT_OPTIONS.find(o => o.key === item.key);
+                                    if (!item.value) return null;
+                                    return (
+                                        <div key={idx} className="bg-white/5 border border-white/10 rounded-2xl p-4 flex items-center gap-3">
+                                            <span className="text-2xl">{opt?.emoji || "🌟"}</span>
+                                            <div className="flex flex-col min-w-0">
+                                                <span className="text-[9px] font-extrabold text-white/40 uppercase tracking-wider">{item.label}</span>
+                                                <span className="text-xs font-bold text-white/90 truncate">{item.value}</span>
+                                            </div>
+                                        </div>
+                                    );
+                                })}
+                            </div>
+                        </div>
+                    )}
 
                     {/* Dashboard Stats Row */}
                     <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 shrink-0">

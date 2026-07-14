@@ -27,15 +27,12 @@ export const updateAppStreak = async (userId) => {
       stats = await UserStats.create({ userId });
     }
 
-    const user = await User.findById(userId);
-    if (!user) return;
-
-    const lastActive = user.lastActive || new Date(0);
+    const lastActive = stats.lastActiveStreakDate || new Date(0);
     const now = new Date();
 
     if (isSameDay(lastActive, now)) {
       // Already active today, no change
-      return;
+      return stats;
     }
 
     // Increment total active days (since we passed isSameDay check)
@@ -51,9 +48,8 @@ export const updateAppStreak = async (userId) => {
         stats.longestStreak = stats.appStreak;
     }
     
-    // Update user's lastActive timestamp so they aren't processed again today
-    user.lastActive = now;
-    await user.save();
+    // Update stats' lastActiveStreakDate so they aren't processed again today
+    stats.lastActiveStreakDate = now;
     
     await stats.save();
     return stats;

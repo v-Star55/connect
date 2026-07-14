@@ -43,6 +43,7 @@ const chatMemberSchema = new mongoose.Schema({
 }, { timestamps: true });
 
 chatMemberSchema.index({ chat: 1, user: 1 }, { unique: true });
+chatMemberSchema.index({ user: 1, isDeleted: 1 });
 
 const ChatMember = mongoose.model("ChatMember", chatMemberSchema);
 export default ChatMember;

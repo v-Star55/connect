@@ -1,11 +1,13 @@
 import { useState, useEffect, useRef } from "react";
 import socket from "../socket";
-import { useInfiniteQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { useQuery, useInfiniteQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useSelector } from "react-redux";
 import EmojiPicker, { Theme } from "emoji-picker-react";
-import { getMessagesApi, blockUserApi, unblockUserApi, clearChatApi, toggleMuteApi, toggleReadReceiptsApi, createChatApi, sendMessageApi, editMessageApi, deleteMessageApi, uploadFileApi, markChatAsReadApi } from "../api/api";
-import { Send, MoreVertical, Phone, Video, Smile, Paperclip, Loader2, ShieldAlert, Trash2, Eye, BellOff, Copy, Pencil, Check, X, ChevronRight, Download, ArrowDown } from "lucide-react";
+import { getMessagesApi, blockUserApi, unblockUserApi, removeConnectionApi, clearChatApi, toggleReadReceiptsApi, createChatApi, sendMessageApi, editMessageApi, deleteMessageApi, uploadFileApi, markChatAsReadApi, getChatStatsApi } from "../api/api";
+import { Send, MoreVertical, Smile, Paperclip, Loader2, ShieldAlert, Trash2, Eye, Copy, Pencil, Check, X, ChevronRight, Download, ArrowDown, Gamepad2, Phone, Video, Calendar, MapPin, MessageCircle, Moon, Star, Image as ImageIcon, ListTodo, UserMinus } from "lucide-react";
 import { toast } from "react-hot-toast";
+import SparksPanel from "./SparksPanel";
+import BucketListPanel from "./BucketListPanel";
 import {
   ContextMenu,
   ContextMenuContent,
@@ -61,10 +63,64 @@ const ChatScreen = ({ activeChat, currentUserId, onStartChatClick, onBack }: Cha
   const [isOptionsOpen, setIsOptionsOpen] = useState(false);
   const [showBlockConfirm, setShowBlockConfirm] = useState(false);
   const [showClearConfirm, setShowClearConfirm] = useState(false);
-  const [isMuted, setIsMuted] = useState(false); 
-  const [readReceipts, setReadReceipts] = useState(true); 
-  const [chatId,setChatId] = useState<string | null>(activeChat?.chatId || null);
-  
+  const [showRemoveConnectionConfirm, setShowRemoveConnectionConfirm] = useState(false);
+  const [readReceipts, setReadReceipts] = useState(true);
+  const [isSparksOpen, setIsSparksOpen] = useState(false);
+  const [isSparksClosing, setIsSparksClosing] = useState(false);
+  const [hasSparksActivity, setHasSparksActivity] = useState(false);
+  const [isBucketListOpen, setIsBucketListOpen] = useState(false);
+  const [isBucketListClosing, setIsBucketListClosing] = useState(false);
+  const [chatId, setChatId] = useState<string | null>(activeChat?.chatId || null);
+  const [isContactInfoOpen, setIsContactInfoOpen] = useState(false);
+  const [isContactInfoClosing, setIsContactInfoClosing] = useState(false);
+  const [animateOpen, setAnimateOpen] = useState(false);
+
+  const { data: connectionStats, isLoading: isStatsLoading } = useQuery({
+    queryKey: ["chat-stats", chatId],
+    queryFn: () => getChatStatsApi(chatId!),
+    enabled: !!chatId && isContactInfoOpen,
+  });
+
+  useEffect(() => {
+    if (isContactInfoOpen) {
+      const frame = requestAnimationFrame(() => setAnimateOpen(true));
+      return () => cancelAnimationFrame(frame);
+    } else {
+      setAnimateOpen(false);
+    }
+  }, [isContactInfoOpen]);
+
+  const handleCloseContactInfo = () => {
+    setAnimateOpen(false);
+    setIsContactInfoClosing(true);
+    setTimeout(() => {
+      setIsContactInfoOpen(false);
+      setIsContactInfoClosing(false);
+    }, 280);
+  };
+
+  useEffect(() => {
+    setIsContactInfoOpen(false);
+    setIsSparksOpen(false);
+    setIsBucketListOpen(false);
+  }, [activeChat?.otherUserId]);
+
+  const handleCloseSparks = () => {
+    setIsSparksClosing(true);
+    setTimeout(() => {
+      setIsSparksOpen(false);
+      setIsSparksClosing(false);
+    }, 280);
+  };
+
+  const handleCloseBucketList = () => {
+    setIsBucketListClosing(true);
+    setTimeout(() => {
+      setIsBucketListOpen(false);
+      setIsBucketListClosing(false);
+    }, 280);
+  };
+
   const [editingMessageId, setEditingMessageId] = useState<string | null>(null);
   const [editingContent, setEditingContent] = useState("");
   const [deletingMessageId, setDeletingMessageId] = useState<string | null>(null);
@@ -92,14 +148,6 @@ const ChatScreen = ({ activeChat, currentUserId, onStartChatClick, onBack }: Cha
     };
   }, []);
 
-  const muteMutation = useMutation({
-    mutationFn: (muted: boolean) => toggleMuteApi(chatId!, muted),
-    onSuccess: (res) => {
-      setIsMuted(res.isMuted);
-      toast.success(res.message);
-      queryClient.invalidateQueries({ queryKey: ["my-chats"] });
-    }
-  });
 
   const readReceiptsMutation = useMutation({
     mutationFn: (enabled: boolean) => toggleReadReceiptsApi(chatId!, enabled),
@@ -124,7 +172,7 @@ const ChatScreen = ({ activeChat, currentUserId, onStartChatClick, onBack }: Cha
     } else if (activeChat?.isBlockedByMe !== undefined) {
       setIsBlockedByMe(activeChat.isBlockedByMe);
     }
-    
+
     if (activeChat?.isBlockedByOther !== undefined) {
       setIsBlockedByOther(activeChat.isBlockedByOther);
     }
@@ -163,7 +211,26 @@ const ChatScreen = ({ activeChat, currentUserId, onStartChatClick, onBack }: Cha
       queryClient.invalidateQueries({ queryKey: ["my-chats"] });
     },
     onError: () => {
-      creationStartedRef.current = null; // Reset on error to allow retry
+      creationStartedRef.current = null;
+    }
+  });
+
+  const removeConnectionMutation = useMutation({
+    mutationFn: () => {
+      if (!activeChat?.otherUserId) throw new Error("Other user ID is required");
+      return removeConnectionApi(activeChat.otherUserId);
+    },
+    onSuccess: (res) => {
+      toast.success(res.message);
+      setShowRemoveConnectionConfirm(false);
+      setIsOptionsOpen(false);
+      queryClient.invalidateQueries({ queryKey: ["my-chats"] });
+      queryClient.invalidateQueries({ queryKey: ["connections"] });
+      // Navigate back to chat list immediately
+      if (onBack) onBack();
+    },
+    onError: () => {
+      toast.error("Failed to remove connection");
     }
   });
 
@@ -173,12 +240,12 @@ const ChatScreen = ({ activeChat, currentUserId, onStartChatClick, onBack }: Cha
     if (!chatId && activeChat?.otherUserId && creationStartedRef.current !== activeChat.otherUserId) {
       creationStartedRef.current = activeChat.otherUserId;
       console.log("Starting chat creation for:", activeChat.otherUserId);
-      createChatMutation.mutate({ 
-        otherUserId: activeChat.otherUserId, 
-        type: activeChat.type 
+      createChatMutation.mutate({
+        otherUserId: activeChat.otherUserId,
+        type: activeChat.type
       });
     }
-  }, [chatId, activeChat?.otherUserId, activeChat?.type]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [chatId, activeChat?.otherUserId, activeChat?.type]);
 
 
   const handleEditMessage = async (messageId: string) => {
@@ -216,8 +283,7 @@ const ChatScreen = ({ activeChat, currentUserId, onStartChatClick, onBack }: Cha
   const handleDeleteMessage = async (messageId: string) => {
     try {
       setDeletingMessageId(messageId);
-      
-      // Wait for animation
+
       await new Promise(resolve => setTimeout(resolve, 300));
 
       await deleteMessageApi(messageId);
@@ -243,38 +309,67 @@ const ChatScreen = ({ activeChat, currentUserId, onStartChatClick, onBack }: Cha
       setDeletingMessageId(null);
       toast.success("Message deleted");
     } catch (error) {
-      
-        setDeletingMessageId(null);
-        toast.error("Failed to delete message");
+
+      setDeletingMessageId(null);
+      toast.error("Failed to delete message");
     }
   };
 
 
   useEffect(() => {
     if (!chatId) return;
-    
+
+    const handleSparksNotify = (data: any) => {
+      if (data.senderId === currentUserId) return;
+      if (data.action === "START") {
+        if (!isSparksOpen) {
+          setHasSparksActivity(true);
+          toast(`Friend started a game of ${data.gameType}! Click the gamepad icon to play.`, {
+            icon: "🎮",
+            duration: 5000,
+          });
+        }
+      }
+    };
+
+    const handleConnectionRemoved = (data: any) => {
+      if (String(data.chatId) !== String(chatId)) return;
+      // The other user removed the connection — navigate away and refresh
+      queryClient.invalidateQueries({ queryKey: ["my-chats"] });
+      queryClient.invalidateQueries({ queryKey: ["connections"] });
+      toast("Connection removed.", { icon: "👋" });
+      if (onBack) onBack();
+    };
+
+    socket.on("sparksStateUpdate", handleSparksNotify);
+    socket.on("connectionRemoved", handleConnectionRemoved);
     console.log("Attempting to join socket room:", chatId);
     socket.emit("joinChat", chatId);
-    
-    // Cleanup
+
     return () => {
+      socket.off("sparksStateUpdate", handleSparksNotify);
+      socket.off("connectionRemoved", handleConnectionRemoved);
       console.log("Leaving socket room:", chatId);
       socket.emit("leaveChat", chatId);
     };
-  }, [chatId]);
+  }, [chatId, currentUserId, isSparksOpen, onBack, queryClient]);
+
+  useEffect(() => {
+    if (isSparksOpen) {
+      setHasSparksActivity(false);
+    }
+  }, [isSparksOpen]);
 
   const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
 
-    // Check size limit (50MB)
     const MAX_SIZE = 50 * 1024 * 1024;
     if (file.size > MAX_SIZE) {
       toast.error("File size exceeds the 50MB limit");
       return;
     }
 
-    // Determine type
     let type: "image" | "video" | "audio" | "document" = "document";
     if (file.type.startsWith("image/")) {
       type = "image";
@@ -284,7 +379,6 @@ const ChatScreen = ({ activeChat, currentUserId, onStartChatClick, onBack }: Cha
       type = "audio";
     }
 
-    // Convert to base64
     const reader = new FileReader();
     reader.onload = async () => {
       const base64Data = reader.result as string;
@@ -340,12 +434,10 @@ const ChatScreen = ({ activeChat, currentUserId, onStartChatClick, onBack }: Cha
       );
       const savedMessage = res.message;
 
-      // Update local UI immediately
       queryClient.setQueryData(["messages", chatId], (oldData: any) => {
         if (!oldData) return oldData;
         const newPages = [...oldData.pages];
         if (newPages.length > 0) {
-          // Check if already exists (via socket or earlier)
           const exists = newPages.some(page => page.messages.some((m: any) => m._id === savedMessage._id));
           if (exists) return oldData;
 
@@ -375,16 +467,15 @@ const ChatScreen = ({ activeChat, currentUserId, onStartChatClick, onBack }: Cha
   useEffect(() => {
     const handleNewMessage = (message: any) => {
       console.log("Socket newMessage received:", message);
-      
+
       const msgChatId = message.chatId?._id || message.chatId;
-      
+
       if (String(msgChatId) === String(chatId)) {
         console.log("Updating local query data for chatId:", chatId);
         queryClient.setQueryData(["messages", chatId], (oldData: { pages: any[] } | undefined) => {
           if (!oldData) return oldData;
           const newPages = [...oldData.pages];
           if (newPages.length > 0) {
-            // Check if message already exists (to avoid duplicates for sender)
             const exists = newPages.some(page => page.messages.some((m: any) => m._id === message._id));
             if (exists) return oldData;
 
@@ -493,7 +584,7 @@ const ChatScreen = ({ activeChat, currentUserId, onStartChatClick, onBack }: Cha
     };
   }, [chatId, queryClient, currentUserId]);
 
-    
+
 
 
   const {
@@ -510,7 +601,6 @@ const ChatScreen = ({ activeChat, currentUserId, onStartChatClick, onBack }: Cha
     getNextPageParam: (lastPage) => lastPage.next,
   });
 
-  // Declarative read receipts effect
   const messagesList = data?.pages.flatMap(page => page.messages) || [];
   const latestMessageId = messagesList[0]?._id;
 
@@ -519,8 +609,7 @@ const ChatScreen = ({ activeChat, currentUserId, onStartChatClick, onBack }: Cha
 
     const latestMessage = messagesList[0];
     const senderId = latestMessage?.sender?._id || latestMessage?.sender;
-    
-    // Only mark as read if the message is from someone else
+
     if (latestMessage && senderId !== currentUserId) {
       console.log(`[Declarative markAsRead] Triggered by latestMessageId: ${latestMessageId} from sender: ${senderId}`);
       const markAsRead = async () => {
@@ -535,7 +624,6 @@ const ChatScreen = ({ activeChat, currentUserId, onStartChatClick, onBack }: Cha
     }
   }, [chatId, latestMessageId, currentUserId, queryClient]);
 
-  // Scroll helpers
   const scrollToBottom = () => {
     if (scrollRef.current) {
       scrollRef.current.scrollTo({
@@ -549,22 +637,18 @@ const ChatScreen = ({ activeChat, currentUserId, onStartChatClick, onBack }: Cha
   const handleScroll = () => {
     if (!scrollRef.current) return;
     const { scrollTop, scrollHeight, clientHeight } = scrollRef.current;
-    // Show button if user has scrolled up by more than 300px
     const isScrolledUp = scrollHeight - scrollTop - clientHeight > 300;
     setShowScrollDownButton(isScrolledUp);
   };
 
-  // Smart scrolling on new data
   useEffect(() => {
     if (scrollRef.current) {
       const { scrollTop, scrollHeight, clientHeight } = scrollRef.current;
       const isScrolledUp = scrollHeight - scrollTop - clientHeight > 300;
 
-      // Extract the latest message
       const latestMessage = messagesList[0];
       const isLastMessageMine = latestMessage?.sender?._id === currentUserId || latestMessage?.sender === currentUserId;
 
-      // Only scroll to bottom automatically if the user is already at the bottom or if it's their own message
       if (!isScrolledUp || isLastMessageMine) {
         scrollRef.current.scrollTop = scrollRef.current.scrollHeight;
       }
@@ -573,7 +657,6 @@ const ChatScreen = ({ activeChat, currentUserId, onStartChatClick, onBack }: Cha
 
 
 
-  // Close dropdown when clicking outside
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
       if (dropdownRef.current && !dropdownRef.current.contains(event.target as Node)) {
@@ -588,7 +671,6 @@ const ChatScreen = ({ activeChat, currentUserId, onStartChatClick, onBack }: Cha
     return (
       <div className="h-full w-full flex flex-col items-center justify-center p-8 text-center select-none animate-in fade-in zoom-in-95 duration-500 bg-transparent">
         <div className="mb-8 w-16 h-16 flex items-center justify-center">
-          {/* Centered Chat Bubble Icon */}
           <div className="w-16 h-16 bg-gradient-to-tr from-sky-400 to-indigo-500 rounded-full shadow-lg shadow-indigo-500/35 border border-white/20 flex items-center justify-center animate-bounce" style={{ animationDuration: '3s' }}>
             <svg className="w-8 h-8 text-white" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
               <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z" />
@@ -597,14 +679,14 @@ const ChatScreen = ({ activeChat, currentUserId, onStartChatClick, onBack }: Cha
             </svg>
           </div>
         </div>
-        
+
         <h2 className="text-2xl font-black text-white tracking-wide">No conversation selected</h2>
         <p className="text-sm text-white/60 mt-2 max-w-sm leading-relaxed font-medium">
           Choose a conversation from the list or start a new one!
         </p>
-        
+
         {onStartChatClick && (
-          <button 
+          <button
             onClick={onStartChatClick}
             className="mt-6 py-3.5 px-6 rounded-2xl bg-gradient-to-r from-violet-500/80 to-indigo-500/80 hover:from-violet-500 hover:to-indigo-500 text-white font-extrabold text-xs tracking-wide flex items-center gap-2 border border-white/10 shadow-lg shadow-indigo-500/10 hover:scale-[1.02] active:scale-[0.98] transition-all cursor-pointer"
           >
@@ -626,12 +708,12 @@ const ChatScreen = ({ activeChat, currentUserId, onStartChatClick, onBack }: Cha
     const touch = e.touches[0];
     const clientX = touch.clientX;
     const clientY = touch.clientY;
-    
+
     (target as any)._longPressTimer = setTimeout(() => {
       if (navigator.vibrate) {
         navigator.vibrate(50);
       }
-      
+
       const customEvent = new MouseEvent("contextmenu", {
         bubbles: true,
         cancelable: true,
@@ -665,7 +747,7 @@ const ChatScreen = ({ activeChat, currentUserId, onStartChatClick, onBack }: Cha
       <div className="h-20 px-4 md:px-6 flex items-center justify-between border-b border-white/15 backdrop-blur-3xl relative z-40">
         <div className="flex items-center gap-2.5 md:gap-4">
           {onBack && (
-            <button 
+            <button
               onClick={onBack}
               className="md:hidden p-2 rounded-xl hover:bg-white/10 text-white/70 hover:text-white transition-all cursor-pointer mr-1"
             >
@@ -675,41 +757,92 @@ const ChatScreen = ({ activeChat, currentUserId, onStartChatClick, onBack }: Cha
               </svg>
             </button>
           )}
-          <Avatar className="w-10 h-10 md:w-12 md:h-12 border border-white/40">
-            <AvatarImage src={activeChat.profilePicture} alt={activeChat.name} />
-            <AvatarFallback>
-              <img src="/userFallback.png" alt={activeChat.name} className="w-full h-full rounded-full object-cover" />
-            </AvatarFallback>
-            {activeChat.isOnline && (
-              <AvatarBadge className="bg-[#40c057] w-3.5 h-3.5 border-2 border-[#1e1c31]" />
-            )}
-          </Avatar>
-          <div>
-            <h3 className="font-bold text-lg text-white leading-tight">{activeChat.name}</h3>
-            {activeChat.vibes && activeChat.vibes.length > 0 && (
+          <div
+            onClick={() => {
+              if (isContactInfoOpen) {
+                handleCloseContactInfo();
+              } else {
+                setIsContactInfoOpen(true);
+                if (isSparksOpen) handleCloseSparks();
+              }
+            }}
+            className="flex items-center gap-2.5 md:gap-4 cursor-pointer hover:opacity-85 active:scale-[0.99] transition-all"
+          >
+            <Avatar className="w-10 h-10 md:w-12 md:h-12 border border-white/40">
+              <AvatarImage src={activeChat.profilePicture} alt={activeChat.name} />
+              <AvatarFallback>
+                <img src="/userFallback.png" alt={activeChat.name} className="w-full h-full rounded-full object-cover" />
+              </AvatarFallback>
+              {activeChat.isOnline && (
+                <AvatarBadge className="bg-[#40c057] w-3.5 h-3.5 border-2 border-[#1e1c31]" />
+              )}
+            </Avatar>
+            <div>
+              <h3 className="font-bold text-lg text-white leading-tight">{activeChat.name}</h3>
+              {activeChat.vibes && activeChat.vibes.length > 0 && (
                 <div className="flex flex-wrap gap-1.5 mt-1">
-                    {activeChat.vibes.slice(0, 3).map((vibe, i) => (
-                        <span key={i} className="text-[10px] bg-white/10 text-white/80 px-2 py-0.5 rounded-full border border-white/10 font-medium">
-                            {vibe}
-                        </span>
-                    ))}
-                    {activeChat.vibes.length > 3 && (
-                        <span className="text-[10px] text-white/50 px-1">+{activeChat.vibes.length - 3}</span>
-                    )}
+                  {activeChat.vibes.slice(0, 3).map((vibe, i) => (
+                    <span key={i} className="text-[10px] bg-white/10 text-white/80 px-2 py-0.5 rounded-full border border-white/10 font-medium">
+                      {vibe}
+                    </span>
+                  ))}
+                  {activeChat.vibes.length > 3 && (
+                    <span className="text-[10px] text-white/50 px-1">+{activeChat.vibes.length - 3}</span>
+                  )}
                 </div>
-            )}
+              )}
+            </div>
           </div>
         </div>
         <div className="flex items-center gap-3">
-          <button className="p-2.5 rounded-xl hover:bg-white/10 text-white/60 hover:text-white transition-all cursor-pointer">
-            <Phone className="w-5 h-5" />
+          <button 
+            onClick={() => {
+              if (isBucketListOpen) {
+                handleCloseBucketList();
+              } else {
+                setIsBucketListOpen(true);
+                setIsSparksOpen(false);
+                setIsContactInfoOpen(false);
+              }
+            }}
+            className={`p-2.5 rounded-xl transition-all cursor-pointer relative group ${
+              isBucketListOpen 
+                ? "bg-gradient-to-r from-violet-500 to-indigo-500 text-white shadow-md shadow-violet-500/25" 
+                : "text-white/60 hover:text-white hover:bg-white/10"
+            }`}
+            title="Shared Bucket List"
+          >
+            <ListTodo className="w-5 h-5" />
           </button>
-          <button className="p-2.5 rounded-xl hover:bg-white/10 text-white/60 hover:text-white transition-all cursor-pointer">
-            <Video className="w-5 h-5" />
+
+          <button 
+            onClick={() => {
+              if (isSparksOpen) {
+                handleCloseSparks();
+              } else {
+                setIsSparksOpen(true);
+                setIsBucketListOpen(false);
+                setIsContactInfoOpen(false);
+              }
+            }}
+            className={`p-2.5 rounded-xl transition-all cursor-pointer relative group ${
+              isSparksOpen 
+                ? "bg-gradient-to-r from-indigo-500 to-violet-500 text-white shadow-md shadow-indigo-500/25" 
+                : "text-white/60 hover:text-white hover:bg-white/10"
+            }`}
+            title="Connection Sparks"
+          >
+            <Gamepad2 className="w-5 h-5" />
+            {hasSparksActivity && (
+              <span className="absolute top-1.5 right-1.5 flex h-2 w-2">
+                <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
+                <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-500"></span>
+              </span>
+            )}
           </button>
-          
+
           <div className="relative" ref={dropdownRef}>
-            <button 
+            <button
               onClick={() => setIsOptionsOpen(!isOptionsOpen)}
               className={`p-2.5 rounded-xl transition-all cursor-pointer ${isOptionsOpen ? "bg-white/20 text-white" : "text-white/60 hover:text-white hover:bg-white/10"}`}
             >
@@ -720,7 +853,7 @@ const ChatScreen = ({ activeChat, currentUserId, onStartChatClick, onBack }: Cha
             {isOptionsOpen && (
               <div className="absolute right-0 top-full mt-2 w-56 bg-[#180f2a]/60 backdrop-blur-xl border border-white/20 rounded-2xl shadow-2xl overflow-hidden animate-in fade-in zoom-in-95 duration-200 origin-top-right z-50">
                 <div className="p-2">
-                  <button 
+                  <button
                     onClick={() => { readReceiptsMutation.mutate(!readReceipts); setIsOptionsOpen(false); }}
                     className="w-full flex items-center justify-between px-4 py-3 text-sm text-white/90 hover:bg-white/10 rounded-xl transition-all cursor-pointer border border-transparent"
                   >
@@ -735,14 +868,20 @@ const ChatScreen = ({ activeChat, currentUserId, onStartChatClick, onBack }: Cha
                 </div>
 
                 <div className="p-2 border-t border-white/10">
-                  <button 
+                  <button
                     onClick={() => { setIsOptionsOpen(false); if (isBlockedByMe) handleUnblockUser(); else setShowBlockConfirm(true); }}
-                    className={`w-full flex items-center gap-3 px-4 py-3 text-sm rounded-xl transition-all cursor-pointer border border-transparent ${
-                      isBlockedByMe ? "text-green-400 hover:bg-white/10" : "text-red-400 hover:bg-white/10"
-                    }`}
+                    className={`w-full flex items-center gap-3 px-4 py-3 text-sm rounded-xl transition-all cursor-pointer border border-transparent ${isBlockedByMe ? "text-green-400 hover:bg-white/10" : "text-red-400 hover:bg-white/10"
+                      }`}
                   >
                     <ShieldAlert className="w-4 h-4" />
                     <span>{isBlockedByMe ? "Unblock User" : "Block User"}</span>
+                  </button>
+                  <button
+                    onClick={() => { setIsOptionsOpen(false); setShowRemoveConnectionConfirm(true); }}
+                    className="w-full flex items-center gap-3 px-4 py-3 text-sm rounded-xl transition-all cursor-pointer border border-transparent text-orange-400 hover:bg-white/10"
+                  >
+                    <UserMinus className="w-4 h-4" />
+                    <span>Remove Connection</span>
                   </button>
                 </div>
               </div>
@@ -774,21 +913,193 @@ const ChatScreen = ({ activeChat, currentUserId, onStartChatClick, onBack }: Cha
         isPending={clearChatMutation.isPending}
       />
 
-      {/* Messages area */}
-      <div 
-        ref={scrollRef}
-        onScroll={handleScroll}
-        className="flex-1 overflow-y-auto p-6 space-y-6 scrollbar-hide bg-transparent"
-      >
-        {isLoading ? (
-            <div className="flex items-center justify-center h-full">
-                <Loader2 className="w-8 h-8 animate-spin text-violet-400" />
+      <ConfirmationModal
+        isOpen={showRemoveConnectionConfirm}
+        onClose={() => setShowRemoveConnectionConfirm(false)}
+        onConfirm={() => removeConnectionMutation.mutate()}
+        title={`Remove ${activeChat.name}?`}
+        description={`You and ${activeChat.name} will no longer be connected. You can send a new connection request later if you change your mind.`}
+        confirmText="Remove"
+        type="danger"
+        isPending={removeConnectionMutation.isPending}
+      />
+
+      {/* Main Workspace Area: Holds Chat pane and Sparks pane */}
+      <div className="flex-1 flex flex-col md:flex-row overflow-hidden relative">
+        {/* Chat Pane */}
+        <div className="flex-1 flex flex-col h-full min-w-0 order-2 md:order-1 relative bg-transparent">
+          {/* Connection Stats Drop-down Overlay */}
+          {(isContactInfoOpen || isContactInfoClosing) && (
+            <div className={`absolute inset-0 z-40 bg-[#0c0717]/97 backdrop-blur-xl border-t border-white/10 transition-all duration-300 ease-out flex flex-col ${
+              animateOpen && !isContactInfoClosing
+                ? "translate-y-0 opacity-100"
+                : "-translate-y-full opacity-0"
+            }`}>
+              {/* Header */}
+              <div className="flex items-center justify-between px-6 py-4 border-b border-white/10 flex-shrink-0">
+                <div className="flex items-center gap-2">
+                  <Star className="w-5 h-5 text-yellow-400 fill-yellow-400/20" />
+                  <h3 className="text-sm font-black text-white uppercase tracking-wider">Connection Stats</h3>
+                </div>
+                <button 
+                  onClick={handleCloseContactInfo}
+                  className="p-2 bg-white/5 hover:bg-white/10 border border-white/10 rounded-xl text-white/70 hover:text-white cursor-pointer transition-all active:scale-95"
+                >
+                  <X className="w-4.5 h-4.5" />
+                </button>
+              </div>
+
+              {/* Scrollable Content */}
+              <div className="flex-1 overflow-y-auto p-6 space-y-6 scrollbar-hide">
+                {isStatsLoading ? (
+                  <div className="h-full flex flex-col items-center justify-center py-24 gap-3">
+                    <Loader2 className="w-8 h-8 text-violet-400 animate-spin" />
+                    <span className="text-xs text-white/50 font-bold">Unlocking connection insights...</span>
+                  </div>
+                ) : !connectionStats ? (
+                  <div className="text-center py-10 text-white/50 text-xs font-semibold">Failed to load connection statistics.</div>
+                ) : (() => {
+                  const partner = connectionStats.partner;
+                  const stats = connectionStats.stats;
+                  
+                  return (
+                    <div className="max-w-2xl mx-auto space-y-6">
+                      {/* Partner Profile card */}
+                      <div className="bg-white/5 border border-white/10 p-6 rounded-3xl flex flex-col md:flex-row items-center md:items-start text-center md:text-left gap-5 relative overflow-hidden group">
+                        <div className="absolute top-0 right-0 w-32 h-32 bg-indigo-500/10 rounded-full blur-3xl group-hover:bg-indigo-500/15 transition-colors"></div>
+                        <Avatar className="w-20 h-20 md:w-24 md:h-24 border-2 border-violet-500/30 shadow-2xl relative z-10 flex-shrink-0">
+                          <AvatarImage src={partner?.profilePicture || activeChat?.profilePicture} />
+                          <AvatarFallback>
+                            <img src="/userFallback.png" className="w-full h-full rounded-full object-cover" />
+                          </AvatarFallback>
+                        </Avatar>
+                        <div className="space-y-2 relative z-10 flex-1 min-w-0">
+                          <div className="space-y-0.5">
+                            <h4 className="text-xl font-black text-white leading-snug">{partner?.name || activeChat?.name}</h4>
+                            <p className="text-xs text-white/40 font-bold">@{partner?.username || activeChat?.username}</p>
+                          </div>
+                          <p className="text-xs text-white/70 font-medium leading-relaxed max-w-lg">{partner?.bio || "No status bio set."}</p>
+                          
+                          <div className="flex flex-wrap items-center justify-center md:justify-start gap-4 text-[10px] text-white/50 font-extrabold uppercase pt-1">
+                            <span className="flex items-center gap-1">
+                              <MapPin className="w-3.5 h-3.5 text-indigo-400" /> {stats.location}
+                            </span>
+                            <span>•</span>
+                            <span className="flex items-center gap-1">
+                              <Calendar className="w-3.5 h-3.5 text-indigo-400" /> Joined {partner?.createdAt ? new Date(partner.createdAt).toLocaleDateString('en-US', { month: 'short', year: 'numeric' }) : 'N/A'}
+                            </span>
+                          </div>
+                        </div>
+                      </div>
+
+                      {/* Connection Tracker Badge */}
+                      <div className="bg-gradient-to-r from-violet-600/30 to-indigo-600/30 border border-violet-500/30 rounded-3xl p-6 text-center space-y-2 relative overflow-hidden">
+                        <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_center,rgba(139,92,246,0.15),transparent)]"></div>
+                        <span className="text-[10px] font-extrabold text-violet-300 uppercase tracking-widest relative z-10">Friendship Milestones</span>
+                        <h5 className="text-xl font-black text-white relative z-10">Connected for {stats.friendsSince}</h5>
+                        <p className="text-[11px] text-white/60 font-semibold relative z-10 flex items-center justify-center gap-1">
+                          <Calendar className="w-3.5 h-3.5 text-violet-400" /> First message spark: {stats.firstMessageDate ? new Date(stats.firstMessageDate).toLocaleDateString('en-US', { day: 'numeric', month: 'long', year: 'numeric' }) : 'Never'}
+                        </p>
+                      </div>
+
+                      {/* Quick statistics metrics grid */}
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                        <div className="bg-white/5 border border-white/10 rounded-2xl p-5 space-y-2 flex flex-col justify-between">
+                          <span className="text-[9px] font-extrabold text-white/40 uppercase tracking-wider flex items-center gap-1">
+                            <MessageCircle className="w-3.5 h-3.5 text-white/45" /> Total Messages
+                          </span>
+                          <div className="text-3xl font-black text-white">{stats.totalMessages.toLocaleString()}</div>
+                          <p className="text-[10px] text-white/55 font-medium leading-snug">Total messages exchanged in this conversation</p>
+                        </div>
+                        
+                        <div className="bg-white/5 border border-white/10 rounded-2xl p-5 space-y-2 flex flex-col justify-between">
+                          <span className="text-[9px] font-extrabold text-violet-300 uppercase tracking-wider flex items-center gap-1">
+                            <Moon className="w-3.5 h-3.5 text-violet-400" /> Late-Night Chats
+                          </span>
+                          <div className="text-3xl font-black text-violet-400">{stats.lateNightCount.toLocaleString()}</div>
+                          <p className="text-[10px] text-white/55 font-medium leading-snug">Messages sent between 12 AM and 5 AM</p>
+                        </div>
+                      </div>
+
+                      {/* Highlights & Custom prompts cards list */}
+                      {partner?.aboutMe && partner.aboutMe.length > 0 && (
+                        <div className="space-y-3">
+                          <h4 className="text-[10px] font-extrabold text-white/40 uppercase tracking-widest">Q&A Highlights</h4>
+                          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                            {partner.aboutMe.map((item: any, idx: number) => {
+                              if (!item.value) return null;
+                              return (
+                                <div key={idx} className="bg-white/5 border border-white/10 rounded-2xl p-4 flex items-center gap-3.5">
+                                  <span className="text-2xl">✨</span>
+                                  <div className="flex flex-col min-w-0">
+                                    <span className="text-[9px] font-extrabold text-white/40 uppercase tracking-wider">{item.label}</span>
+                                    <span className="text-xs font-bold text-white/90 truncate">{item.value}</span>
+                                  </div>
+                                </div>
+                              );
+                            })}
+                          </div>
+                        </div>
+                      )}
+
+                      {/* Shared Photos grid gallery */}
+                      <div className="space-y-3">
+                        <div className="flex items-center justify-between">
+                          <h4 className="text-[10px] font-extrabold text-white/40 uppercase tracking-widest flex items-center gap-1.5">
+                            <ImageIcon className="w-3.5 h-3.5 text-white/45" /> Shared Photos
+                          </h4>
+                          <span className="text-xs bg-white/10 border border-white/10 text-white/80 px-2.5 py-0.5 rounded-full font-bold">
+                            {stats.photosCount} Photo{stats.photosCount !== 1 ? 's' : ''}
+                          </span>
+                        </div>
+                        
+                        {stats.photoPreviews && stats.photoPreviews.length > 0 ? (
+                          <div className="grid grid-cols-3 sm:grid-cols-6 gap-3">
+                            {stats.photoPreviews.map((url: string, i: number) => (
+                              <div key={i} className="aspect-square bg-white/5 border border-white/10 rounded-2xl overflow-hidden group relative shadow-md">
+                                <img src={url} className="w-full h-full object-cover transition-transform duration-300 group-hover:scale-105" />
+                              </div>
+                            ))}
+                          </div>
+                        ) : (
+                          <div className="text-center py-8 border border-dashed border-white/15 rounded-2xl text-white/40 text-xs font-medium">
+                            No photos shared in this chat yet.
+                          </div>
+                        )}
+                      </div>
+
+                      {/* Back/Close drawer footer button */}
+                      <div className="flex justify-center pt-4">
+                        <button
+                          onClick={handleCloseContactInfo}
+                          className="py-3 px-6 rounded-2xl bg-white/5 hover:bg-white/10 text-white/80 hover:text-white font-bold text-xs tracking-wider border border-white/10 hover:border-white/15 transition-all cursor-pointer active:scale-95 flex items-center gap-1.5"
+                        >
+                          <ChevronRight className="w-4 h-4 -rotate-90" />
+                          <span>Close Stats</span>
+                        </button>
+                      </div>
+                    </div>
+                  );
+                })()}
+              </div>
             </div>
+          )}
+
+          {/* Messages area */}
+          <div
+            ref={scrollRef}
+            onScroll={handleScroll}
+            className="flex-1 overflow-y-auto p-6 space-y-6 scrollbar-hide bg-transparent"
+          >
+        {isLoading ? (
+          <div className="flex items-center justify-center h-full">
+            <Loader2 className="w-8 h-8 animate-spin text-violet-400" />
+          </div>
         ) : (
           <>
             {hasNextPage && (
               <div className="flex justify-center py-2">
-                <button 
+                <button
                   onClick={() => fetchNextPage()}
                   disabled={isFetchingNextPage}
                   className="text-xs text-white/40 hover:text-white transition-colors cursor-pointer"
@@ -811,142 +1122,140 @@ const ChatScreen = ({ activeChat, currentUserId, onStartChatClick, onBack }: Cha
                 const canEdit = (now - messageDate) < 30 * 60 * 1000;
 
                 return (
-                <div 
-                  key={msg._id} 
-                  className={`flex ${isMine ? "justify-end" : "justify-start"} group/msg relative transition-all duration-300 ${
-                    isDeleting ? "opacity-0 scale-95 -translate-y-4" : "opacity-100 scale-100"
-                  }`}
-                >
-                  <div className={`flex flex-col max-w-[70%] ${isMine ? "items-end" : "items-start"} relative`}>
-                    
-                    {/* Message Content / Edit UI */}
-                    <div className="flex items-center gap-2 group">
-                      {isEditing ? (
-                        <div className="flex flex-col bg-slate-950/90 backdrop-blur-md rounded-2xl border border-white/10 overflow-hidden">
-                          <textarea
-                            className="bg-transparent p-3 text-sm text-white focus:outline-none min-w-[200px] resize-none"
-                            value={editingContent}
-                            onChange={(e) => setEditingContent(e.target.value)}
-                            rows={2}
-                            autoFocus
-                          />
-                          <div className="flex justify-end gap-1 p-1 bg-slate-900/50">
-                            <button 
-                              onClick={() => setEditingMessageId(null)}
-                              className="p-1.5 rounded-lg hover:bg-white/10 text-white/60 transition-all cursor-pointer"
-                            >
-                              <X className="w-4 h-4" />
-                            </button>
-                            <button 
-                              onClick={() => handleEditMessage(msg._id)}
-                              className="p-1.5 rounded-lg hover:bg-white/10 text-white transition-all cursor-pointer"
-                            >
-                              <Check className="w-4 h-4" />
-                            </button>
-                          </div>
-                        </div>
-                      ) : (
-                        <ContextMenu>
-                          <ContextMenuTrigger className="select-text">
-                            <div 
-                              onTouchStart={handleTouchStart}
-                              onTouchEnd={handleTouchEnd}
-                              onTouchMove={handleTouchMove}
-                              className={`px-4 py-3 rounded-2xl text-sm leading-relaxed cursor-context-menu select-none md:select-text ${
-                                isMine 
-                                  ? "bg-gradient-to-r from-violet-500 to-indigo-500 text-white rounded-tr-none shadow-md border border-white/20" 
-                                  : "bg-white backdrop-blur-md text-black rounded-tl-none shadow-md border border-white/15"
-                              }`}
-                            >
-                              {msg.media && (
-                                <div className="mb-2 max-w-[280px] sm:max-w-xs md:max-w-md rounded-xl overflow-hidden border border-white/10 shadow-md relative group/media">
-                                  {msg.mediaType === "image" && (
-                                    <img src={msg.media} alt="Attachment" className="w-full object-cover max-h-60" />
-                                  )}
-                                  {msg.mediaType === "video" && (
-                                    <video src={msg.media} controls className="w-full max-h-60" />
-                                  )}
-                                  {msg.mediaType === "audio" && (
-                                    <audio src={msg.media} controls className="w-full" />
-                                  )}
-                                  {msg.mediaType === "document" && (
-                                    <a 
-                                      href={msg.media} 
-                                      target="_blank" 
-                                      rel="noopener noreferrer" 
-                                      className="flex items-center gap-2 p-3 bg-black/20 hover:bg-black/35 text-white transition-all text-xs font-semibold"
-                                    >
-                                      <span>📄 Download File</span>
-                                    </a>
-                                  )}
-                                  <button
-                                    type="button"
-                                    onClick={() => handleDownload(msg.media!, `attachment-${msg._id}`)}
-                                    className="absolute top-2 right-2 p-2 rounded-lg bg-black/60 hover:bg-black/80 text-white/80 hover:text-white transition-all opacity-0 group-hover/media:opacity-100 shadow-md cursor-pointer flex items-center justify-center z-10"
-                                    title="Download attachment"
-                                  >
-                                    <Download className="w-4 h-4" />
-                                  </button>
-                                </div>
-                              )}
-                              {msg.content && <p className="whitespace-pre-wrap">{msg.content}</p>}
+                  <div
+                    key={msg._id}
+                    className={`flex ${isMine ? "justify-end" : "justify-start"} group/msg relative transition-all duration-300 ${isDeleting ? "opacity-0 scale-95 -translate-y-4" : "opacity-100 scale-100"
+                      }`}
+                  >
+                    <div className={`flex flex-col max-w-[70%] ${isMine ? "items-end" : "items-start"} relative`}>
+
+                      {/* Message Content / Edit UI */}
+                      <div className="flex items-center gap-2 group">
+                        {isEditing ? (
+                          <div className="flex flex-col bg-slate-950/90 backdrop-blur-md rounded-2xl border border-white/10 overflow-hidden">
+                            <textarea
+                              className="bg-transparent p-3 text-sm text-white focus:outline-none min-w-[200px] resize-none"
+                              value={editingContent}
+                              onChange={(e) => setEditingContent(e.target.value)}
+                              rows={2}
+                              autoFocus
+                            />
+                            <div className="flex justify-end gap-1 p-1 bg-slate-900/50">
+                              <button
+                                onClick={() => setEditingMessageId(null)}
+                                className="p-1.5 rounded-lg hover:bg-white/10 text-white/60 transition-all cursor-pointer"
+                              >
+                                <X className="w-4 h-4" />
+                              </button>
+                              <button
+                                onClick={() => handleEditMessage(msg._id)}
+                                className="p-1.5 rounded-lg hover:bg-white/10 text-white transition-all cursor-pointer"
+                              >
+                                <Check className="w-4 h-4" />
+                              </button>
                             </div>
-                          </ContextMenuTrigger>
-                          <ContextMenuContent className="w-36 bg-[#180f2a]/60 backdrop-blur-xl border border-white/20 rounded-xl shadow-2xl p-1 z-50 animate-in fade-in zoom-in-95 duration-100">
-                            <ContextMenuItem 
-                              onClick={() => {
-                                navigator.clipboard.writeText(msg.content || msg.media || "");
-                                toast.success("Copied to clipboard");
-                              }}
-                               className="flex items-center gap-2 px-3 py-2 text-xs text-white/80 hover:text-white/20 hover:bg-white/10 transition-all cursor-pointer rounded-lg outline-none"
-                            >
-                              <Copy className="w-3.5 h-3.5 text-white/50" />
-                              <span>Copy</span>
-                            </ContextMenuItem>
-                            
-                            {isMine && canEdit && (
-                              <ContextMenuItem 
-                                onClick={() => {
-                                  setEditingMessageId(msg._id);
-                                  setEditingContent(msg.content);
-                                }}
-                                className="flex items-center gap-2 px-3 py-2 text-xs text-white/80 hover:text-white hover:bg-white/10 transition-all cursor-pointer rounded-lg outline-none"
+                          </div>
+                        ) : (
+                          <ContextMenu>
+                            <ContextMenuTrigger className="select-text">
+                              <div
+                                onTouchStart={handleTouchStart}
+                                onTouchEnd={handleTouchEnd}
+                                onTouchMove={handleTouchMove}
+                                className={`px-4 py-3 rounded-2xl text-sm leading-relaxed cursor-context-menu select-none md:select-text ${isMine
+                                    ? "bg-gradient-to-r from-violet-500 to-indigo-500 text-white rounded-tr-none shadow-md border border-white/20"
+                                    : "bg-white backdrop-blur-md text-black rounded-tl-none shadow-md border border-white/15"
+                                  }`}
                               >
-                                <Pencil className="w-3.5 h-3.5 text-white/50" />
-                                <span>Edit</span>
-                              </ContextMenuItem>
-                            )}
-
-                            {isMine && (
-                              <ContextMenuItem 
+                                {msg.media && (
+                                  <div className="mb-2 max-w-[280px] sm:max-w-xs md:max-w-md rounded-xl overflow-hidden border border-white/10 shadow-md relative group/media">
+                                    {msg.mediaType === "image" && (
+                                      <img src={msg.media} alt="Attachment" className="w-full object-cover max-h-60" />
+                                    )}
+                                    {msg.mediaType === "video" && (
+                                      <video src={msg.media} controls className="w-full max-h-60" />
+                                    )}
+                                    {msg.mediaType === "audio" && (
+                                      <audio src={msg.media} controls className="w-full" />
+                                    )}
+                                    {msg.mediaType === "document" && (
+                                      <a
+                                        href={msg.media}
+                                        target="_blank"
+                                        rel="noopener noreferrer"
+                                        className="flex items-center gap-2 p-3 bg-black/20 hover:bg-black/35 text-white transition-all text-xs font-semibold"
+                                      >
+                                        <span>📄 Download File</span>
+                                      </a>
+                                    )}
+                                    <button
+                                      type="button"
+                                      onClick={() => handleDownload(msg.media!, `attachment-${msg._id}`)}
+                                      className="absolute top-2 right-2 p-2 rounded-lg bg-black/60 hover:bg-black/80 text-white/80 hover:text-white transition-all opacity-0 group-hover/media:opacity-100 shadow-md cursor-pointer flex items-center justify-center z-10"
+                                      title="Download attachment"
+                                    >
+                                      <Download className="w-4 h-4" />
+                                    </button>
+                                  </div>
+                                )}
+                                {msg.content && <p className="whitespace-pre-wrap">{msg.content}</p>}
+                              </div>
+                            </ContextMenuTrigger>
+                            <ContextMenuContent className="w-36 bg-[#180f2a]/60 backdrop-blur-xl border border-white/20 rounded-xl shadow-2xl p-1 z-50 animate-in fade-in zoom-in-95 duration-100">
+                              <ContextMenuItem
                                 onClick={() => {
-                                  handleDeleteMessage(msg._id);
+                                  navigator.clipboard.writeText(msg.content || msg.media || "");
+                                  toast.success("Copied to clipboard");
                                 }}
-                                variant="destructive"
-                                className="flex items-center gap-2 px-3 py-2 text-xs text-red-400 hover:text-red-300 hover:bg-red-500/10 transition-all cursor-pointer rounded-lg outline-none border-t border-white/10 mt-1 pt-2"
+                                className="flex items-center gap-2 px-3 py-2 text-xs text-white/80 hover:text-white/20 hover:bg-white/10 transition-all cursor-pointer rounded-lg outline-none"
                               >
-                                <Trash2 className="w-3.5 h-3.5" />
-                                <span>Delete</span>
+                                <Copy className="w-3.5 h-3.5 text-white/50" />
+                                <span>Copy</span>
                               </ContextMenuItem>
-                            )}
-                          </ContextMenuContent>
-                        </ContextMenu>
-                      )}
-                    </div>
 
-                    <div className={`flex items-center gap-1.5 mt-1 px-1 ${isMine ? "justify-end" : "justify-start"}`}>
-                      {msg.isEdited && (
-                        <span className="text-[9px] text-white/30 italic opacity-70">edited</span>
-                      )}
-                      <span className="text-[10px] text-white">
-                        {new Date(msg.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
-                      </span>
-                      {isMine && (
+                              {isMine && canEdit && (
+                                <ContextMenuItem
+                                  onClick={() => {
+                                    setEditingMessageId(msg._id);
+                                    setEditingContent(msg.content);
+                                  }}
+                                  className="flex items-center gap-2 px-3 py-2 text-xs text-white/80 hover:text-white hover:bg-white/10 transition-all cursor-pointer rounded-lg outline-none"
+                                >
+                                  <Pencil className="w-3.5 h-3.5 text-white/50" />
+                                  <span>Edit</span>
+                                </ContextMenuItem>
+                              )}
+
+                              {isMine && (
+                                <ContextMenuItem
+                                  onClick={() => {
+                                    handleDeleteMessage(msg._id);
+                                  }}
+                                  variant="destructive"
+                                  className="flex items-center gap-2 px-3 py-2 text-xs text-red-400 hover:text-red-300 hover:bg-red-500/10 transition-all cursor-pointer rounded-lg outline-none border-t border-white/10 mt-1 pt-2"
+                                >
+                                  <Trash2 className="w-3.5 h-3.5" />
+                                  <span>Delete</span>
+                                </ContextMenuItem>
+                              )}
+                            </ContextMenuContent>
+                          </ContextMenu>
+                        )}
+                      </div>
+
+                      <div className={`flex items-center gap-1.5 mt-1 px-1 ${isMine ? "justify-end" : "justify-start"}`}>
+                        {msg.isEdited && (
+                          <span className="text-[9px] text-white/30 italic opacity-70">edited</span>
+                        )}
+                        <span className="text-[10px] text-white">
+                          {new Date(msg.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                        </span>
+                        {isMine && (
                           <span className={`${msg.isRead ? "text-sky-400" : "text-violet-300"} font-semibold text-[10px] ml-0.5`}>✓✓</span>
-                      )}
+                        )}
+                      </div>
                     </div>
                   </div>
-                </div>
                 );
               });
             })()}
@@ -956,7 +1265,7 @@ const ChatScreen = ({ activeChat, currentUserId, onStartChatClick, onBack }: Cha
 
       {/* Down arrow to scroll to latest messages */}
       {showScrollDownButton && (
-        <button 
+        <button
           onClick={scrollToBottom}
           className="absolute bottom-28 left-1/2 -translate-x-1/2 z-30 p-2.5 bg-gradient-to-r from-violet-600 to-indigo-600 hover:from-violet-500 hover:to-indigo-500 text-white rounded-full shadow-lg border border-white/20 hover:scale-110 active:scale-95 transition-all duration-300 cursor-pointer flex items-center justify-center animate-bounce"
           style={{ animationDuration: "2s" }}
@@ -971,17 +1280,17 @@ const ChatScreen = ({ activeChat, currentUserId, onStartChatClick, onBack }: Cha
         if (isBlockedByMe) {
           return (
             <div className="p-8 bg-white/5 backdrop-blur-md border-t border-white/10 flex flex-col items-center gap-5 animate-in fade-in slide-in-from-bottom-4 duration-500 shrink-0">
-               <div className="flex items-center gap-3 bg-red-500/10 px-6 py-3 rounded-full border border-red-500/20 shadow-xs">
-                  <ShieldAlert className="w-5 h-5 text-red-400" />
-                  <span className="text-red-300 text-sm font-semibold tracking-wide">You have blocked this user. Unblock to send messages.</span>
-               </div>
-               <button 
+              <div className="flex items-center gap-3 bg-red-500/10 px-6 py-3 rounded-full border border-red-500/20 shadow-xs">
+                <ShieldAlert className="w-5 h-5 text-red-400" />
+                <span className="text-red-300 text-sm font-semibold tracking-wide">You have blocked this user. Unblock to send messages.</span>
+              </div>
+              <button
                 onClick={handleUnblockUser}
                 className="group px-10 py-3.5 bg-gradient-to-r from-violet-500 to-indigo-500 hover:from-violet-600 hover:to-indigo-600 text-white rounded-2xl text-sm font-black transition-all shadow-md active:scale-95 flex items-center gap-2 hover:gap-3 cursor-pointer"
-               >
-                 <span>Unblock to Chat</span>
-                 <ChevronRight className="w-4 h-4" />
-               </button>
+              >
+                <span>Unblock to Chat</span>
+                <ChevronRight className="w-4 h-4" />
+              </button>
             </div>
           );
         }
@@ -989,11 +1298,11 @@ const ChatScreen = ({ activeChat, currentUserId, onStartChatClick, onBack }: Cha
         if (isBlockedByOther) {
           return (
             <div className="p-8 bg-white/5 backdrop-blur-md border-t border-white/10 flex flex-col items-center gap-5 animate-in fade-in slide-in-from-bottom-4 duration-500 shrink-0">
-               <div className="flex items-center gap-3 bg-red-500/10 px-6 py-3 rounded-full border border-red-500/20 shadow-xs">
-                  <ShieldAlert className="w-5 h-5 text-red-400" />
-                  <span className="text-red-300 text-sm font-semibold tracking-wide">You are blocked by this user. You cannot send messages.</span>
-               </div>
-               <p className="text-white/40 text-xs italic">Messaging is disabled for this conversation.</p>
+              <div className="flex items-center gap-3 bg-red-500/10 px-6 py-3 rounded-full border border-red-500/20 shadow-xs">
+                <ShieldAlert className="w-5 h-5 text-red-400" />
+                <span className="text-red-300 text-sm font-semibold tracking-wide">You are blocked by this user. You cannot send messages.</span>
+              </div>
+              <p className="text-white/40 text-xs italic">Messaging is disabled for this conversation.</p>
             </div>
           );
         }
@@ -1032,8 +1341,8 @@ const ChatScreen = ({ activeChat, currentUserId, onStartChatClick, onBack }: Cha
                     <p className="text-sm font-bold text-white truncate max-w-[200px] sm:max-w-xs">{attachment.name}</p>
                   </div>
                 </div>
-                <button 
-                  type="button" 
+                <button
+                  type="button"
                   onClick={() => setAttachment(null)}
                   className="p-1.5 rounded-lg hover:bg-white/10 text-white/60 hover:text-white transition-all cursor-pointer flex-shrink-0"
                 >
@@ -1041,19 +1350,19 @@ const ChatScreen = ({ activeChat, currentUserId, onStartChatClick, onBack }: Cha
                 </button>
               </div>
             )}
-            <form 
+            <form
               className="flex items-center gap-4 bg-white/10 border border-white/15 p-2.5 px-4.5 rounded-[22px] focus-within:border-white/25 focus-within:bg-white/15 transition-all"
               onSubmit={(e) => { e.preventDefault(); handleSendMessage(); }}
             >
-              <input 
-                type="file" 
-                ref={fileInputRef} 
-                onChange={handleFileChange} 
-                className="hidden" 
+              <input
+                type="file"
+                ref={fileInputRef}
+                onChange={handleFileChange}
+                className="hidden"
               />
               <div className="relative flex items-center" ref={emojiPickerRef}>
-                <button 
-                  type="button" 
+                <button
+                  type="button"
                   onClick={() => setShowEmojiPicker(!showEmojiPicker)}
                   className="text-white/60 hover:text-white transition-colors cursor-pointer"
                 >
@@ -1061,7 +1370,7 @@ const ChatScreen = ({ activeChat, currentUserId, onStartChatClick, onBack }: Cha
                 </button>
                 {showEmojiPicker && (
                   <div className="absolute bottom-12 left-0 z-50 shadow-2xl rounded-2xl border border-white/10 overflow-hidden backdrop-blur-3xl">
-                    <EmojiPicker 
+                    <EmojiPicker
                       theme={Theme.DARK}
                       onEmojiClick={(emojiData) => {
                         setMessageText((prev) => prev + emojiData.emoji);
@@ -1070,8 +1379,8 @@ const ChatScreen = ({ activeChat, currentUserId, onStartChatClick, onBack }: Cha
                   </div>
                 )}
               </div>
-              <button 
-                type="button" 
+              <button
+                type="button"
                 onClick={() => fileInputRef.current?.click()}
                 disabled={isUploading}
                 className="text-white/60 hover:text-white transition-colors cursor-pointer disabled:opacity-30 disabled:cursor-not-allowed"
@@ -1095,8 +1404,8 @@ const ChatScreen = ({ activeChat, currentUserId, onStartChatClick, onBack }: Cha
                   }
                 }}
               />
-              <button 
-                type="submit" 
+              <button
+                type="submit"
                 disabled={(!messageText.trim() && !attachment) || isUploading}
                 className="w-10 h-10 rounded-full bg-gradient-to-r from-violet-500 to-indigo-500 hover:from-violet-600 hover:to-indigo-600 text-white disabled:opacity-30 disabled:cursor-not-allowed flex items-center justify-center transition-all flex-shrink-0 cursor-pointer shadow-sm"
               >
@@ -1106,6 +1415,42 @@ const ChatScreen = ({ activeChat, currentUserId, onStartChatClick, onBack }: Cha
           </div>
         );
       })()}
+        </div>
+
+        {/* Sparks Pane */}
+        {(isSparksOpen || isSparksClosing) && (
+          <div className={`absolute md:relative inset-0 md:inset-auto md:w-[450px] md:h-full bg-[#0d0619]/95 backdrop-blur-lg md:border-l border-white/15 order-1 md:order-2 shrink-0 z-50 flex flex-col ${
+            isSparksClosing
+              ? "animate-out slide-out-to-right duration-300 fill-mode-forwards"
+              : "animate-in slide-in-from-right duration-300"
+          }`}>
+            <SparksPanel 
+              chatId={chatId}
+              currentUserId={currentUserId}
+              otherUserId={activeChat?.otherUserId || null}
+              otherUserName={activeChat?.name || "Friend"}
+              onClose={handleCloseSparks}
+            />
+          </div>
+        )}
+
+        {/* Bucket List Pane */}
+        {(isBucketListOpen || isBucketListClosing) && (
+          <div className={`absolute md:relative inset-0 md:inset-auto md:w-[450px] md:h-full bg-[#070311]/95 backdrop-blur-lg md:border-l border-white/15 order-1 md:order-2 shrink-0 z-50 flex flex-col ${
+            isBucketListClosing
+              ? "animate-out slide-out-to-right duration-300 fill-mode-forwards"
+              : "animate-in slide-in-from-right duration-300"
+          }`}>
+            <BucketListPanel
+              chatId={chatId}
+              currentUserId={currentUserId}
+              otherUserName={activeChat?.name || "Friend"}
+              onClose={handleCloseBucketList}
+            />
+          </div>
+        )}
+      </div>
+
     </div>
   );
 };

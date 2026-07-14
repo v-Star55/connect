@@ -4,28 +4,27 @@ import { useSelector, useDispatch } from "react-redux";
 import { useQueryClient, useInfiniteQuery } from "@tanstack/react-query";
 import { logout } from "../slice/auth/authSlice";
 import { logoutApi, getUserConnectionRequestApi } from "../api/api";
-import { 
-  Search, 
-  UserPlus, 
-  User, 
-  LogOut, 
-  Settings, 
-  MessageSquare,
-  Sparkles,
+import {
+    Search,
+    UserPlus,
+    User,
+    LogOut,
+    Settings,
+    MessageSquare,
 } from "lucide-react";
 import toast from "react-hot-toast";
 import ConfirmationModal from "./ui/ConfirmationModal";
 
 import {
-  Sidebar as ShadcnSidebar,
-  SidebarContent,
-  SidebarFooter,
-  SidebarGroup,
-  SidebarGroupContent,
-  SidebarHeader,
-  SidebarMenu,
-  SidebarMenuButton,
-  SidebarMenuItem,
+    Sidebar as ShadcnSidebar,
+    SidebarContent,
+    SidebarFooter,
+    SidebarGroup,
+    SidebarGroupContent,
+    SidebarHeader,
+    SidebarMenu,
+    SidebarMenuButton,
+    SidebarMenuItem,
 } from "./ui/sidebar";
 import { TooltipProvider } from "./ui/tooltip";
 
@@ -35,7 +34,7 @@ const Sidebar = ({ onOpenRequests }: { readonly onOpenRequests: () => void }) =>
     const navigate = useNavigate();
     const location = useLocation();
     const queryClient = useQueryClient();
-    
+
     const [isLogoutConfirmOpen, setIsLogoutConfirmOpen] = useState(false);
     const [isLoggingOut, setIsLoggingOut] = useState(false);
 
@@ -63,48 +62,48 @@ const Sidebar = ({ onOpenRequests }: { readonly onOpenRequests: () => void }) =>
         getNextPageParam: (lastPage) => lastPage.next,
         staleTime: 5 * 60 * 1000,
     });
-    
+
     const requestsCount = requestsData?.pages
         ? requestsData.pages.reduce((acc, page) => acc + (page?.requests?.length || 0), 0)
         : 0;
 
     const menuItems = [
-        { 
-            icon: MessageSquare, 
-            label: "Messages", 
-            type: "link", 
-            path: "/" 
+        {
+            icon: MessageSquare,
+            label: "Messages",
+            type: "link",
+            path: "/"
         },
-        { 
-            icon: Search, 
-            label: "Search", 
-            type: "link", 
-            path: "/search" 
+        {
+            icon: Search,
+            label: "Search",
+            type: "link",
+            path: "/search"
         },
-        { 
-            icon: UserPlus, 
-            label: "Requests", 
-            type: "button", 
+        {
+            icon: UserPlus,
+            label: "Requests",
+            type: "button",
             onClick: onOpenRequests
         },
-        { 
-            icon: User, 
-            label: "Profile", 
-            type: "link", 
+        {
+            icon: User,
+            label: "Profile",
+            type: "link",
             path: "/profile",
-            isProfile: true 
+            isProfile: true
         },
     ];
 
     return (
         <TooltipProvider>
-            <ShadcnSidebar 
-                collapsible="none" 
+            <ShadcnSidebar
+                collapsible="none"
                 className="!bg-transparent !border-none !shadow-none p-0 select-none relative h-full hidden xl:flex flex-col"
             >
                 {/* Floating glassmorphic card container */}
                 <div className="flex-1 flex flex-col justify-between m-4 mr-2  backdrop-blur-md border border-white/15 rounded-[32px] overflow-hidden relative font-outfit">
-                    
+
                     {/* Upper Half: Logo & Main Navigation */}
                     <div className="flex flex-col flex-1">
                         {/* Logo / Header */}
@@ -148,11 +147,10 @@ const Sidebar = ({ onOpenRequests }: { readonly onOpenRequests: () => void }) =>
                                                     <SidebarMenuButton
                                                         isActive={isActive}
                                                         tooltip={item.label}
-                                                        className={`flex items-center justify-between p-3.5 h-12 rounded-xl transition-all relative group cursor-pointer w-full text-sm font-semibold border border-transparent ${
-                                                            isActive 
-                                                                ? "!bg-gradient-to-r !from-violet-500/25 !to-indigo-500/25 !text-white !border-white/20 !shadow-md shadow-indigo-500/5" 
+                                                        className={`flex items-center justify-between p-3.5 h-12 rounded-xl transition-all relative group cursor-pointer w-full text-sm font-semibold border border-transparent ${isActive
+                                                                ? "!bg-gradient-to-r !from-violet-500/25 !to-indigo-500/25 !text-white !border-white/20 !shadow-md shadow-indigo-500/5"
                                                                 : "!text-white/70 hover:!text-white hover:!bg-white/10"
-                                                        }`}
+                                                            }`}
                                                         render={
                                                             item.type === "link" && item.path ? (
                                                                 <Link to={item.path} />
@@ -162,12 +160,11 @@ const Sidebar = ({ onOpenRequests }: { readonly onOpenRequests: () => void }) =>
                                                         }>
                                                         <div className="flex items-center gap-3.5">
                                                             {item.isProfile ? (
-                                                                <img 
-                                                                    src={user?.profilePicture || "/userFallback.png"} 
-                                                                    alt="Profile" 
-                                                                    className={`w-5 h-5 rounded-full object-cover border ${
-                                                                        isActive ? "border-white" : "border-white/20 group-hover:border-white/50"
-                                                                    }`} 
+                                                                <img
+                                                                    src={user?.profilePicture || "/userFallback.png"}
+                                                                    alt="Profile"
+                                                                    className={`w-5 h-5 rounded-full object-cover border ${isActive ? "border-white" : "border-white/20 group-hover:border-white/50"
+                                                                        }`}
                                                                 />
                                                             ) : (
                                                                 <Icon className="w-5 h-5 flex-shrink-0" />
@@ -177,11 +174,10 @@ const Sidebar = ({ onOpenRequests }: { readonly onOpenRequests: () => void }) =>
 
                                                         {/* Requests Badge */}
                                                         {item.label === "Requests" && requestsCount > 0 && (
-                                                            <span className={`flex items-center justify-center min-w-[20px] h-5 px-1.5 rounded-full text-[10px] font-black tracking-wide ${
-                                                                isActive 
-                                                                    ? "bg-white text-indigo-750" 
+                                                            <span className={`flex items-center justify-center min-w-[20px] h-5 px-1.5 rounded-full text-[10px] font-black tracking-wide ${isActive
+                                                                    ? "bg-white text-indigo-750"
                                                                     : "bg-gradient-to-r from-violet-600 to-indigo-600 text-white border border-white/10"
-                                                            }`}>
+                                                                }`}>
                                                                 {requestsCount}
                                                             </span>
                                                         )}
@@ -197,7 +193,7 @@ const Sidebar = ({ onOpenRequests }: { readonly onOpenRequests: () => void }) =>
 
                     {/* Lower Half: Promo Card & Footer */}
                     <div className="shrink-0 flex flex-col">
-                        
+
                         <div className="h-px bg-white/10 mx-6 my-2" />
 
                         {/* Settings Button */}

@@ -33,6 +33,13 @@ const userSchema = new mongoose.Schema({
         type: String,
         default: "",
     },
+    aboutMe: [
+        {
+            key: { type: String },
+            label: { type: String },
+            value: { type: String }
+        }
+    ],
     isOnline: {
         type: Boolean,
         default: false,

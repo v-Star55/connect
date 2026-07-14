@@ -39,7 +39,6 @@ const SearchPage = () => {
     } = useInfiniteQuery({
         queryKey: ["users", debouncedSearchQuery, selectedVibe, sortBy],
         queryFn: ({ pageParam }) => searchUsers(debouncedSearchQuery, pageParam as number, selectedVibe, sortBy),
-        enabled: !!debouncedSearchQuery || selectedVibe !== "All",
         initialPageParam: 1,
         getNextPageParam: (lastPage) => lastPage.next,
     });

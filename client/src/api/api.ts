@@ -1,5 +1,4 @@
 import axios from "axios";
-import { toast } from "react-hot-toast";
 
 const api = axios.create({
   baseURL: `${import.meta.env.VITE_BACKEND_URL}/api`,
@@ -13,8 +12,8 @@ api.interceptors.response.use(
   async (err) => {
     const originalConfig = err.config;
 
-    if ( originalConfig.url !== "/auth/login" && originalConfig.url !== "/auth/refresh" 
-      && err.response){
+    if (originalConfig.url !== "/auth/login" && originalConfig.url !== "/auth/refresh"
+      && err.response) {
       // Access Token was expired
       if (err.response.status === 401 && !originalConfig._retry) {
         originalConfig._retry = true;
@@ -39,9 +38,9 @@ api.interceptors.response.use(
 
 export default async function loginApi(username: string, password: string) {
   try {
-    console.log('base URL:',import.meta.env.VITE_BACKEND_URL);
+    console.log('base URL:', import.meta.env.VITE_BACKEND_URL);
     console.log("Login API called with:", { username, password });
-    const res= await api.post("/auth/login", { username, password });
+    const res = await api.post("/auth/login", { username, password });
     return res.data;
   } catch (error) {
     console.error("Login error:", error);
@@ -172,7 +171,7 @@ export async function getUserConnectionApi(page: number = 1) {
 
 
 export async function getUserConnectionRequestApi(page: number = 1) {
-    try {
+  try {
     const res = await api.get(`/user/connections/request?page=${page}`);
     return res.data;
   } catch (error) {
@@ -182,7 +181,7 @@ export async function getUserConnectionRequestApi(page: number = 1) {
 }
 
 export async function acceptConnectionRequestApi(requestId: string) {
-    try {
+  try {
     const res = await api.put(`/user/connections/accept/${requestId}`);
     return res.data;
   } catch (error) {
@@ -192,7 +191,7 @@ export async function acceptConnectionRequestApi(requestId: string) {
 }
 
 export async function rejectConnectionRequestApi(requestId: string) {
-    try {
+  try {
     const res = await api.put(`/user/connections/reject/${requestId}`);
     return res.data;
   } catch (error) {
@@ -205,7 +204,7 @@ export async function rejectConnectionRequestApi(requestId: string) {
 // ///////////////////////////// chats
 
 export async function createChatApi(otherUserId: string, type: string) {
-    try {
+  try {
     const res = await api.post(`/chat`, { otherUserId, type });
     return res.data;
   } catch (error) {
@@ -236,7 +235,7 @@ export async function uploadFileApi(fileData: string) {
 }
 
 export async function editMessageApi(messageId: string, content: string) {
-    try {
+  try {
     const res = await api.put(`/chat/edit/${messageId}`, { content });
     return res.data;
   } catch (error) {
@@ -246,7 +245,7 @@ export async function editMessageApi(messageId: string, content: string) {
 }
 
 export async function deleteMessageApi(messageId: string) {
-    try {
+  try {
     const res = await api.delete(`/chat/delete/${messageId}`);
     return res.data;
   } catch (error) {
@@ -257,7 +256,7 @@ export async function deleteMessageApi(messageId: string) {
 
 
 export async function replyMessageApi(chatId: string, message: string) {
-    try {
+  try {
     const res = await api.post(`/chat/replyMessage`, { chatId, message });
     return res.data;
   } catch (error) {
@@ -268,7 +267,7 @@ export async function replyMessageApi(chatId: string, message: string) {
 
 
 export async function clearChatApi(chatId: string) {
-    try {
+  try {
     const res = await api.post(`/chat/clear`, { chatId });
     return res.data;
   } catch (error) {
@@ -279,7 +278,7 @@ export async function clearChatApi(chatId: string) {
 
 
 export async function toggleMuteApi(chatId: string, isMuted: boolean) {
-    try {
+  try {
     const res = await api.put(`/chat/mute`, { chatId, isMuted });
     return res.data;
   } catch (error) {
@@ -290,7 +289,7 @@ export async function toggleMuteApi(chatId: string, isMuted: boolean) {
 
 
 export async function toggleReadReceiptsApi(chatId: string, enabled: boolean) {
-    try {
+  try {
     const res = await api.put(`/chat/read-receipts`, { chatId, enabled });
     return res.data;
   } catch (error) {
@@ -312,7 +311,7 @@ export async function markChatAsReadApi(chatId: string) {
 
 
 export async function getChatsByUserApi(page: number = 1) {
-    try {
+  try {
     const res = await api.get(`/chat/user?page=${page}`);
     return res.data;
   } catch (error) {
@@ -350,6 +349,16 @@ export async function unblockUserApi(userId: string) {
   }
 }
 
+export async function removeConnectionApi(userId: string) {
+  try {
+    const res = await api.delete(`/user/connections/${userId}`);
+    return res.data;
+  } catch (error) {
+    console.error("Remove connection error:", error);
+    throw error;
+  }
+}
+
 export async function getProfileApi() {
   try {
     const res = await api.get("/user/profile");
@@ -360,9 +369,9 @@ export async function getProfileApi() {
   }
 }
 
-export async function updateProfileApi(name?: string, bio?: string, profilePicture?: string) {
+export async function updateProfileApi(name?: string, bio?: string, profilePicture?: string, aboutMe?: any) {
   try {
-    const res = await api.put("/user/profile", { name, bio, profilePicture });
+    const res = await api.put("/user/profile", { name, bio, profilePicture, aboutMe });
     return res.data;
   } catch (error) {
     console.error("Update profile error:", error);
@@ -379,3 +388,54 @@ export async function updateVibeApi(vibes: string[]) {
     throw error;
   }
 }
+
+export async function getChatStatsApi(chatId: string) {
+  try {
+    const res = await api.get(`/chat/stats/${chatId}`);
+    return res.data;
+  } catch (error) {
+    console.error("Get chat stats error:", error);
+    throw error;
+  }
+}
+
+export async function getBucketListApi(chatId: string) {
+  try {
+    const res = await api.get(`/chat/bucketlist/${chatId}`);
+    return res.data;
+  } catch (error) {
+    console.error("Get bucket list error:", error);
+    throw error;
+  }
+}
+
+export async function createBucketListItemApi(chatId: string, title: string, timeframe: string, customEndDate?: string) {
+  try {
+    const res = await api.post("/chat/bucketlist", { chatId, title, timeframe, customEndDate });
+    return res.data;
+  } catch (error) {
+    console.error("Create bucket list item error:", error);
+    throw error;
+  }
+}
+
+export async function toggleBucketListItemApi(itemId: string) {
+  try {
+    const res = await api.put(`/chat/bucketlist/${itemId}/toggle`);
+    return res.data;
+  } catch (error) {
+    console.error("Toggle bucket list item error:", error);
+    throw error;
+  }
+}
+
+export async function deleteBucketListItemApi(itemId: string) {
+  try {
+    const res = await api.delete(`/chat/bucketlist/${itemId}`);
+    return res.data;
+  } catch (error) {
+    console.error("Delete bucket list item error:", error);
+    throw error;
+  }
+}
+

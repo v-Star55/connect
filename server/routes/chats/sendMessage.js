@@ -2,6 +2,8 @@ import Message from "../../db/models/Messages.js";
 import Chat from "../../db/models/Chat.js";
 import ChatMember from "../../db/models/ChatMember.js";
 import User from "../../db/models/User.js";
+import UserConnection from "../../db/models/UserConnections.js";
+import { updateChatStreak } from "../../utils/streakHelper.js";
 
 export const sendMessage = async (req, res) => {
   const { chatId, content, media, mediaType } = req.body;
@@ -34,6 +36,21 @@ export const sendMessage = async (req, res) => {
         if (isBlockedByOther) {
           return res.status(403).json({ message: "This user has blocked you" });
         }
+
+        // Check that an accepted connection still exists
+        const connection = await UserConnection.findOne({
+          status: "accepted",
+          $or: [
+            { requester: userId, receiver: otherUserId },
+            { requester: otherUserId, receiver: userId },
+          ],
+        });
+        if (!connection) {
+          return res.status(403).json({ message: "You are no longer connected with this user" });
+        }
+
+        // Update chat streak
+        await updateChatStreak(userId, otherUserId);
       }
     }
 
