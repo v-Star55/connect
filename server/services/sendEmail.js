@@ -84,7 +84,7 @@ export const sendVerificationEmail = async (to, name, OTP) => {
   );
 
   const mailOptions = {
-    from: `Connect <${process.env.GMAIL_USER}>`,
+    from: `Connect <${process.env.BREVO_SENDER}>`,
     to,
     subject: "Verify Your Email ✅",
     html,

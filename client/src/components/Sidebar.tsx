@@ -109,19 +109,11 @@ const Sidebar = ({ onOpenRequests }: { readonly onOpenRequests: () => void }) =>
                         {/* Logo / Header */}
                         <SidebarHeader className="p-6 mb-2 shrink-0">
                             <Link to="/" className="flex items-center gap-3 group">
-                                <div className="p-2 bg-gradient-to-tr from-violet-500 to-indigo-500 rounded-xl shadow-md shadow-indigo-500/25">
-                                    {/* Custom gradient cloud SVG */}
-                                    <svg className="w-5 h-5 text-white" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                                        <defs>
-                                            <linearGradient id="cloudGrad" x1="0%" y1="0%" x2="100%" y2="100%">
-                                                <stop offset="0%" stopColor="#c084fc" />
-                                                <stop offset="100%" stopColor="#6366f1" />
-                                            </linearGradient>
-                                        </defs>
-                                        <path d="M17.5 19A3.5 3.5 0 0 0 21 15.5c0-2.79-2.54-4.5-5-4.5-.48 0-.92.07-1.34.2-1.12-3-4.14-5.2-7.66-5.2A8 8 0 0 0 1 14a5.5 5.5 0 0 0 5.5 5.5z" fill="url(#cloudGrad)" stroke="none" />
-                                        <path d="M17.5 19A3.5 3.5 0 0 0 21 15.5c0-2.79-2.54-4.5-5-4.5-.48 0-.92.07-1.34.2-1.12-3-4.14-5.2-7.66-5.2A8 8 0 0 0 1 14a5.5 5.5 0 0 0 5.5 5.5z" fill="none" stroke="white" strokeWidth="1.5" />
-                                    </svg>
-                                </div>
+                                <img
+                                    src="/onlyLogo.png"
+                                    alt="Connect Logo"
+                                    className="w-9 h-9 object-contain rounded-xl"
+                                />
                                 <div className="flex flex-col">
                                     <span className="text-base font-black text-white leading-none tracking-wide animate-in fade-in duration-300">
                                         Connect
@@ -148,8 +140,8 @@ const Sidebar = ({ onOpenRequests }: { readonly onOpenRequests: () => void }) =>
                                                         isActive={isActive}
                                                         tooltip={item.label}
                                                         className={`flex items-center justify-between p-3.5 h-12 rounded-xl transition-all relative group cursor-pointer w-full text-sm font-semibold border border-transparent ${isActive
-                                                                ? "!bg-gradient-to-r !from-violet-500/25 !to-indigo-500/25 !text-white !border-white/20 !shadow-md shadow-indigo-500/5"
-                                                                : "!text-white/70 hover:!text-white hover:!bg-white/10"
+                                                            ? "!bg-gradient-to-r !from-violet-500/25 !to-indigo-500/25 !text-white !border-white/20 !shadow-md shadow-indigo-500/5"
+                                                            : "!text-white/70 hover:!text-white hover:!bg-white/10"
                                                             }`}
                                                         render={
                                                             item.type === "link" && item.path ? (
@@ -175,8 +167,8 @@ const Sidebar = ({ onOpenRequests }: { readonly onOpenRequests: () => void }) =>
                                                         {/* Requests Badge */}
                                                         {item.label === "Requests" && requestsCount > 0 && (
                                                             <span className={`flex items-center justify-center min-w-[20px] h-5 px-1.5 rounded-full text-[10px] font-black tracking-wide ${isActive
-                                                                    ? "bg-white text-indigo-750"
-                                                                    : "bg-gradient-to-r from-violet-600 to-indigo-600 text-white border border-white/10"
+                                                                ? "bg-white text-indigo-750"
+                                                                : "bg-gradient-to-r from-violet-600 to-indigo-600 text-white border border-white/10"
                                                                 }`}>
                                                                 {requestsCount}
                                                             </span>

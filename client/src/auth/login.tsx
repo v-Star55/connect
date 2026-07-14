@@ -73,11 +73,11 @@ const Login = () => {
     return (
         <div className="min-h-screen w-full relative flex items-center justify-center lg:justify-between p-6 lg:p-16 xl:p-24 overflow-hidden font-sans select-none">
             {/* Background Video */}
-            <video 
-                autoPlay 
-                loop 
-                muted 
-                playsInline 
+            <video
+                autoPlay
+                loop
+                muted
+                playsInline
                 className="absolute inset-0 w-full h-full object-cover z-0"
             >
                 <source src="/rain.mp4" type="video/mp4" />
@@ -86,22 +86,22 @@ const Login = () => {
             {/* Left Side: Hero Text (Hidden on Mobile) */}
             <div className="hidden lg:flex flex-col justify-end h-full max-w-xl pb-12 z-10 select-none gap-5">
                 <div>
-                    <h1 
+                    <h1
                         className="text-6xl xl:text-7xl font-extrabold text-white tracking-tight"
                         style={{ textShadow: "0 8px 30px rgba(0, 0, 0, 0.5), 0 2px 6px rgba(0, 0, 0, 0.3)" }}
                     >
                         Connect
                     </h1>
-                    <p 
+                    <p
                         className="text-lg xl:text-xl font-semibold text-white/90 tracking-wide mt-2"
                         style={{ textShadow: "0 4px 15px rgba(0, 0, 0, 0.5), 0 1px 4px rgba(0, 0, 0, 0.3)" }}
                     >
                         Always Stay Connected
                     </p>
                 </div>
-                
+
                 {/* Monsoon Greeting */}
-                <div 
+                <div
                     className="p-4 rounded-2xl backdrop-blur-md border border-white/20 text-white/95 max-w-md shadow-lg"
                     style={{ textShadow: "0 1px 2px rgba(0,0,0,0.2)" }}
                 >
@@ -133,7 +133,7 @@ const Login = () => {
                         <form onSubmit={handleSubmit} className="space-y-5">
                             <div>
                                 <h3 className="text-sm font-bold text-slate-800 mb-3">Sign in to your account</h3>
-                                
+
                                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                                     {/* Username input */}
                                     <div className="space-y-1.5">
@@ -210,9 +210,9 @@ const Login = () => {
                     </>
                 ) : (
                     /* REGISTER CARD VIEW */
-                    <RegisterCard 
-                        onBackToLogin={toggleView} 
-                        onSuccess={() => navigate("/login")} 
+                    <RegisterCard
+                        onBackToLogin={toggleView}
+                        onSuccess={() => navigate("/login")}
                     />
                 )}
             </div>

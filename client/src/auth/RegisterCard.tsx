@@ -51,35 +51,7 @@ export const RegisterCard = ({ onBackToLogin, onSuccess }: RegisterCardProps) =>
             return await registerApi(fullName, email, username, password);
         },
         onSuccess: () => {
-            toast(() => (
-                <div className="flex flex-col items-center gap-2 p-1">
-                    <div className="w-20 h-20 rounded-xl overflow-hidden flex items-center justify-center">
-                        <video 
-                            autoPlay 
-                            loop 
-                            muted 
-                            playsInline 
-                            className="w-full h-full object-cover"
-                        >
-                            <source src="/Email successfully sent.webm" type="video/webm" />
-                        </video>
-                    </div>
-                    <span className="text-xs font-bold text-slate-800 text-center">
-                        Verification code sent to your email!
-                    </span>
-                </div>
-            ), {
-                duration: 5000,
-                position: "top-center",
-                style: {
-                    background: "rgba(255, 255, 255, 0.95)",
-                    backdropFilter: "blur(8px)",
-                    border: "1px solid rgba(0, 0, 0, 0.05)",
-                    borderRadius: "20px",
-                    padding: "12px",
-                    boxShadow: "0 10px 30px rgba(0, 0, 0, 0.08)",
-                }
-            });
+            toast.success("Verification code sent to your email!");
             setShowOTP(true);
             setResendCooldown(30);
         },
@@ -151,18 +123,18 @@ export const RegisterCard = ({ onBackToLogin, onSuccess }: RegisterCardProps) =>
                 {!showOTP ? (
                     <div>
                         <h3 className="text-sm font-bold text-slate-800 mb-3">Leave us your information</h3>
-                        
+
                         <div className="space-y-4">
                             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                                 {/* Full Name */}
                                 <div className="space-y-1.5">
                                     <label className="text-xs font-semibold text-slate-700 ml-1">Full Name</label>
-                                    <input 
-                                        type="text" 
-                                        value={fullName} 
-                                        onChange={(e) => setFullName(e.target.value)} 
-                                        placeholder="John Doe" 
-                                        required 
+                                    <input
+                                        type="text"
+                                        value={fullName}
+                                        onChange={(e) => setFullName(e.target.value)}
+                                        placeholder="John Doe"
+                                        required
                                         disabled={registerMutation.isPending || verifyMutation.isPending}
                                         className="w-full bg-white/50 border border-white/40 rounded-2xl py-3.5 px-4 text-sm text-slate-900 focus:outline-none focus:bg-white/80 focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 transition-all placeholder:text-slate-400"
                                     />
@@ -171,12 +143,12 @@ export const RegisterCard = ({ onBackToLogin, onSuccess }: RegisterCardProps) =>
                                 {/* Username */}
                                 <div className="space-y-1.5">
                                     <label className="text-xs font-semibold text-slate-700 ml-1">Username</label>
-                                    <input 
-                                        type="text" 
-                                        value={username} 
-                                        onChange={(e) => setUsername(e.target.value)} 
-                                        placeholder="johndoe" 
-                                        required 
+                                    <input
+                                        type="text"
+                                        value={username}
+                                        onChange={(e) => setUsername(e.target.value)}
+                                        placeholder="johndoe"
+                                        required
                                         disabled={registerMutation.isPending || verifyMutation.isPending}
                                         className="w-full bg-white/50 border border-white/40 rounded-2xl py-3.5 px-4 text-sm text-slate-900 focus:outline-none focus:bg-white/80 focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 transition-all placeholder:text-slate-400"
                                     />
@@ -186,12 +158,12 @@ export const RegisterCard = ({ onBackToLogin, onSuccess }: RegisterCardProps) =>
                             {/* Email */}
                             <div className="space-y-1.5">
                                 <label className="text-xs font-semibold text-slate-700 ml-1">Email</label>
-                                <input 
-                                    type="email" 
-                                    value={email} 
-                                    onChange={(e) => setEmail(e.target.value)} 
-                                    placeholder="john@example.com" 
-                                    required 
+                                <input
+                                    type="email"
+                                    value={email}
+                                    onChange={(e) => setEmail(e.target.value)}
+                                    placeholder="john@example.com"
+                                    required
                                     disabled={registerMutation.isPending || verifyMutation.isPending}
                                     className="w-full bg-white/50 border border-white/40 rounded-2xl py-3.5 px-4 text-sm text-slate-900 focus:outline-none focus:bg-white/80 focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 transition-all placeholder:text-slate-400"
                                 />
@@ -201,12 +173,12 @@ export const RegisterCard = ({ onBackToLogin, onSuccess }: RegisterCardProps) =>
                                 {/* Password */}
                                 <div className="space-y-1.5">
                                     <label className="text-xs font-semibold text-slate-700 ml-1">Password</label>
-                                    <input 
-                                        type="password" 
-                                        value={password} 
-                                        onChange={(e) => setPassword(e.target.value)} 
-                                        placeholder="••••••••" 
-                                        required 
+                                    <input
+                                        type="password"
+                                        value={password}
+                                        onChange={(e) => setPassword(e.target.value)}
+                                        placeholder="••••••••"
+                                        required
                                         disabled={registerMutation.isPending || verifyMutation.isPending}
                                         className="w-full bg-white/50 border border-white/40 rounded-2xl py-3.5 px-4 text-sm text-slate-900 focus:outline-none focus:bg-white/80 focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 transition-all placeholder:text-slate-400"
                                     />
@@ -215,12 +187,12 @@ export const RegisterCard = ({ onBackToLogin, onSuccess }: RegisterCardProps) =>
                                 {/* Confirm Password */}
                                 <div className="space-y-1.5">
                                     <label className="text-xs font-semibold text-slate-700 ml-1">Confirm Password</label>
-                                    <input 
-                                        type="password" 
-                                        value={confirmPassword} 
-                                        onChange={(e) => setConfirmPassword(e.target.value)} 
-                                        placeholder="••••••••" 
-                                        required 
+                                    <input
+                                        type="password"
+                                        value={confirmPassword}
+                                        onChange={(e) => setConfirmPassword(e.target.value)}
+                                        placeholder="••••••••"
+                                        required
                                         disabled={registerMutation.isPending || verifyMutation.isPending}
                                         className="w-full bg-white/50 border border-white/40 rounded-2xl py-3.5 px-4 text-sm text-slate-900 focus:outline-none focus:bg-white/80 focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 transition-all placeholder:text-slate-400"
                                     />
@@ -229,8 +201,8 @@ export const RegisterCard = ({ onBackToLogin, onSuccess }: RegisterCardProps) =>
                         </div>
 
                         {/* Register primary button */}
-                        <button 
-                            type="submit" 
+                        <button
+                            type="submit"
                             disabled={registerMutation.isPending}
                             className="w-full mt-6 bg-slate-950 hover:bg-slate-900 text-white font-bold py-4 rounded-2xl transition-all active:scale-[0.98] disabled:opacity-50 disabled:pointer-events-none shadow-lg shadow-slate-950/20 text-sm"
                         >
@@ -246,11 +218,11 @@ export const RegisterCard = ({ onBackToLogin, onSuccess }: RegisterCardProps) =>
 
                         <div className="space-y-1.5 pt-2">
                             <label className="text-xs font-semibold text-slate-700 ml-1">Enter Verification Code</label>
-                            <input 
-                                type="text" 
-                                value={otp} 
-                                onChange={(e) => setOtp(e.target.value)} 
-                                placeholder="123456" 
+                            <input
+                                type="text"
+                                value={otp}
+                                onChange={(e) => setOtp(e.target.value)}
+                                placeholder="123456"
                                 required={showOTP}
                                 disabled={verifyMutation.isPending}
                                 className="w-full bg-white/50 border border-white/40 rounded-2xl py-3.5 px-4 text-sm text-slate-900 focus:outline-none focus:bg-white/80 focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 transition-all placeholder:text-slate-400"
@@ -258,30 +230,30 @@ export const RegisterCard = ({ onBackToLogin, onSuccess }: RegisterCardProps) =>
                         </div>
 
                         <div className="flex flex-col gap-3 pt-3">
-                            <button 
-                                type="submit" 
+                            <button
+                                type="submit"
                                 disabled={verifyMutation.isPending || registerMutation.isPending}
                                 className="w-full bg-slate-950 hover:bg-slate-900 text-white font-bold py-4 rounded-2xl transition-all active:scale-[0.98] disabled:opacity-50 disabled:pointer-events-none shadow-lg shadow-slate-950/20 text-sm"
                             >
                                 {verifyMutation.isPending ? "Verifying..." : "Verify & Register"}
                             </button>
                             <div className="flex gap-2">
-                                <button 
-                                    type="button" 
-                                    onClick={() => registerMutation.mutate()} 
+                                <button
+                                    type="button"
+                                    onClick={() => registerMutation.mutate()}
                                     disabled={registerMutation.isPending || resendCooldown > 0 || verifyMutation.isPending}
                                     className="flex-1 py-2.5 text-xs font-semibold bg-white/50 hover:bg-white border border-white/30 rounded-full transition-all text-slate-800 active:scale-95 shadow-sm disabled:opacity-50 disabled:pointer-events-none"
                                 >
-                                    {registerMutation.isPending 
-                                        ? "Resending..." 
-                                        : resendCooldown > 0 
-                                            ? `Resend in ${resendCooldown}s` 
+                                    {registerMutation.isPending
+                                        ? "Resending..."
+                                        : resendCooldown > 0
+                                            ? `Resend in ${resendCooldown}s`
                                             : "Resend Code"
                                     }
                                 </button>
-                                <button 
-                                    type="button" 
-                                    onClick={() => setShowOTP(false)} 
+                                <button
+                                    type="button"
+                                    onClick={() => setShowOTP(false)}
                                     disabled={verifyMutation.isPending || registerMutation.isPending}
                                     className="flex-1 py-2.5 text-xs font-semibold bg-white/50 hover:bg-white border border-white/30 rounded-full transition-all text-slate-800 active:scale-95 shadow-sm"
                                 >
