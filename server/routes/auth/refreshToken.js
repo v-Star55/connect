@@ -1,6 +1,7 @@
 import jwt from "jsonwebtoken";
 import crypto from "node:crypto";
 import User from "../../db/models/User.js";
+import { getCookieOptions } from "../../utils/cookieConfig.js";
 
 const hashToken = (t) =>
   crypto.createHash("sha256").update(t).digest("hex");
@@ -46,19 +47,9 @@ const refreshToken = async (req, res) => {
     user.refreshToken = hashToken(newRefreshToken);
     await user.save();
 
-    res.cookie("accessToken", newAccessToken, {
-      httpOnly: true,
-      secure: process.env.NODE_ENV === "production",
-      sameSite: process.env.NODE_ENV === "production" ? "none" : "lax",
-      maxAge: 15 * 60 * 1000
-    });
+    res.cookie("accessToken", newAccessToken, getCookieOptions(15 * 60 * 1000));
 
-    res.cookie("refreshToken", newRefreshToken, {
-      httpOnly: true,
-      secure: process.env.NODE_ENV === "production",
-      sameSite: process.env.NODE_ENV === "production" ? "none" : "lax",
-      maxAge: 7 * 24 * 60 * 60 * 1000
-    });
+    res.cookie("refreshToken", newRefreshToken, getCookieOptions(7 * 24 * 60 * 60 * 1000));
 
     res.status(200).json({ message: "Token refreshed" });
 

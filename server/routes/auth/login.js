@@ -2,6 +2,7 @@ import crypto from "node:crypto";
 import User from "../../db/models/User.js";
 import jwt from "jsonwebtoken";
 import bcrypt from "bcryptjs";
+import { getCookieOptions } from "../../utils/cookieConfig.js";
 
 const hashToken = (t) =>
   crypto.createHash("sha256").update(t).digest("hex");
@@ -32,19 +33,9 @@ const login = async (req, res) => {
     user.refreshToken = hashToken(refreshToken);
     await user.save();
 
-    res.cookie("accessToken", accessToken, {
-      httpOnly: true,
-      secure: process.env.NODE_ENV === "production",
-      sameSite: process.env.NODE_ENV === "production" ? "none" : "lax",
-      maxAge: 15 * 60 * 1000
-    });
+    res.cookie("accessToken", accessToken, getCookieOptions(15 * 60 * 1000));
 
-    res.cookie("refreshToken", refreshToken, {
-      httpOnly: true,
-      secure: process.env.NODE_ENV === "production",
-      sameSite: process.env.NODE_ENV === "production" ? "none" : "lax",
-      maxAge: 7 * 24 * 60 * 60 * 1000
-    });
+    res.cookie("refreshToken", refreshToken, getCookieOptions(7 * 24 * 60 * 60 * 1000));
 
     res.status(200).json({
       message: "Login successful",
@@ -52,7 +43,8 @@ const login = async (req, res) => {
         id: user._id,
         name: user.name,
         email: user.email,
-        username: user.username
+        username: user.username,
+        profilePicture: user.profilePicture
       }
     });
 

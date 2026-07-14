@@ -1,4 +1,5 @@
 import User from "../../db/models/User.js";
+import { getCookieOptions } from "../../utils/cookieConfig.js";
 
 const logout = async (req, res) => {
   try {
@@ -19,17 +20,9 @@ const logout = async (req, res) => {
     }
 
     // Clear cookies
-    res.clearCookie("accessToken", {
-      httpOnly: true,
-      secure: process.env.NODE_ENV === "production",
-      sameSite: process.env.NODE_ENV === "production" ? "none" : "lax"
-    });
+    res.clearCookie("accessToken", getCookieOptions());
 
-    res.clearCookie("refreshToken", {
-      httpOnly: true,
-      secure: process.env.NODE_ENV === "production",
-      sameSite: process.env.NODE_ENV === "production" ? "none" : "lax"
-    });
+    res.clearCookie("refreshToken", getCookieOptions());
 
     return res.status(200).json({ message: "Logged out successfully" });
 
