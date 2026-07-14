@@ -1,12 +1,13 @@
 import { useState, useEffect } from "react";
+import { useNavigate } from "react-router-dom";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { getProfileApi, updateProfileApi, updateVibeApi } from "../api/api";
+import { getProfileApi, updateProfileApi, updateVibeApi, logoutApi } from "../api/api";
 import { 
   Edit2, Save, Flame, Zap, Star, Camera, Check, Search, 
-  Award, Sparkles, X, MessageSquare, Trophy, Clock, UserCheck, Loader2
+  Award, Sparkles, X, MessageSquare, Trophy, Clock, UserCheck, Loader2, LogOut
 } from "lucide-react";
 import { useDispatch } from "react-redux";
-import { login } from "../slice/auth/authSlice";
+import { login, logout } from "../slice/auth/authSlice";
 import toast from "react-hot-toast";
 import {
   Select,
@@ -15,6 +16,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "../components/ui/select";
+import ConfirmationModal from "../components/ui/ConfirmationModal";
 
 const VIBES = [
   "😎 Chill", "🌿 Peaceful", "🌙 Low-Key", "🧘 Zen", "☕ Cozy", "🔥 Hype",
@@ -106,8 +108,27 @@ const PROMPT_OPTIONS = [
 const ProfilePage = () => {
     const queryClient = useQueryClient();
     const dispatch = useDispatch();
+    const navigate = useNavigate();
     
     const [isEditing, setIsEditing] = useState(false);
+    const [isLogoutConfirmOpen, setIsLogoutConfirmOpen] = useState(false);
+    const [isLoggingOut, setIsLoggingOut] = useState(false);
+
+    const handleLogout = async () => {
+        setIsLoggingOut(true);
+        try {
+            await logoutApi();
+            toast.success("Logged out successfully");
+        } catch (error) {
+            console.log("Logout error:", error);
+        } finally {
+            setIsLoggingOut(false);
+            setIsLogoutConfirmOpen(false);
+            dispatch(logout());
+            queryClient.removeQueries();
+            navigate("/login");
+        }
+    };
     const [editName, setEditName] = useState("");
     const [editBio, setEditBio] = useState("");
     const [editAboutMe, setEditAboutMe] = useState<{ key: string; label: string; value: string }[]>([]);
@@ -315,8 +336,8 @@ const ProfilePage = () => {
                             </div>
                         </div>
 
-                        {/* Edit Button */}
-                        <div className="shrink-0">
+                        {/* Action Buttons */}
+                        <div className="shrink-0 flex items-center gap-2.5">
                             <button 
                                 onClick={() => isEditing ? updateProfileMutation.mutate({}) : setIsEditing(true)}
                                 className="bg-white/5 hover:bg-white/10 border border-white/10 text-white rounded-xl text-xs font-bold px-4 py-2.5 flex items-center gap-1.5 transition-all shadow-md active:scale-95 cursor-pointer"
@@ -333,6 +354,16 @@ const ProfilePage = () => {
                                     </>
                                 )}
                             </button>
+
+                            {!isEditing && (
+                                <button 
+                                    onClick={() => setIsLogoutConfirmOpen(true)}
+                                    className="xl:hidden bg-red-500/10 hover:bg-red-500/20 border border-red-500/20 text-red-400 rounded-xl text-xs font-bold px-4 py-2.5 flex items-center gap-1.5 transition-all shadow-md active:scale-95 cursor-pointer"
+                                >
+                                    <LogOut className="w-3.5 h-3.5" />
+                                    <span>Logout</span>
+                                </button>
+                            )}
                         </div>
                     </div>
 
@@ -877,6 +908,17 @@ const ProfilePage = () => {
                     </div>
                 </div>
             )}
+
+            <ConfirmationModal
+                isOpen={isLogoutConfirmOpen}
+                onClose={() => setIsLogoutConfirmOpen(false)}
+                onConfirm={handleLogout}
+                title="Log out of Connect?"
+                description="Are you sure you want to log out? You will need to sign in again to access your messages and streak active days."
+                confirmText="Log Out"
+                type="logout"
+                isPending={isLoggingOut}
+            />
         </div>
     );
 };
