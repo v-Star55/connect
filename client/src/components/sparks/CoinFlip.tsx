@@ -8,7 +8,6 @@ interface CoinFlipProps {
   cfGuesserId: string | null;
   cfFlipperId: string | null;
   currentUserId: string;
-  otherUserId: string;
   otherUserName: string;
   onGuess: (choice: "heads" | "tails") => void;
   onFlip: (result: "heads" | "tails") => void;
@@ -22,7 +21,6 @@ export default function CoinFlip({
   cfGuesserId,
   cfFlipperId,
   currentUserId,
-  otherUserId,
   otherUserName,
   onGuess,
   onFlip,

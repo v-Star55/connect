@@ -919,7 +919,6 @@ export default function SparksPanel({
                   cfGuesserId={cfGuesserId}
                   cfFlipperId={cfFlipperId}
                   currentUserId={currentUserId}
-                  otherUserId={otherUserId || ""}
                   otherUserName={otherUserName}
                   onGuess={handleCfGuess}
                   onFlip={handleCfFlip}
